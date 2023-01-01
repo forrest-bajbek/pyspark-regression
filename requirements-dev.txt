@@ -1,0 +1,9 @@
+black
+build
+flake8
+isort
+pytest
+twine
+wheel
+
+-r requirements.txt

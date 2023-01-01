@@ -1,20 +1,21 @@
-import pytest
 from datetime import date, datetime
-from tabulate import tabulate
-from pyspark.sql import SparkSession
+
 import pyspark.sql.functions as F
+import pytest
+from pyspark.sql import SparkSession
 from pyspark.sql.types import (
-    IntegerType,
-    StringType,
     BooleanType,
-    IntegerType,
+    DateType,
     DoubleType,
     FloatType,
-    DateType,
-    TimestampType,
-    StructType,
+    IntegerType,
+    StringType,
     StructField,
+    StructType,
+    TimestampType,
 )
+from tabulate import tabulate
+
 from pyspark_regression.regression import RegressionTest, SchemaMutation
 
 
@@ -60,7 +61,7 @@ def test_post_init_pk_exists(empty_df):
     df_old = empty_df
     df_new = empty_df
     with pytest.raises(KeyError):
-        rt = RegressionTest(df_old=df_old, df_new=df_new, pk="wrong_key")
+        RegressionTest(df_old=df_old, df_new=df_new, pk="wrong_key")
 
 
 def test_post_init_pk_reserved(empty_df):
@@ -70,7 +71,7 @@ def test_post_init_pk_reserved(empty_df):
     df_old = empty_df
     df_new = empty_df
     with pytest.raises(KeyError):
-        rt = RegressionTest(df_old=df_old, df_new=df_new, pk="pk")
+        RegressionTest(df_old=df_old, df_new=df_new, pk="pk")
 
 
 def test_columns_old(empty_df):
@@ -172,7 +173,7 @@ def test_df_duplicate_old(simple_df):
     assert rt.df_duplicate_old.exceptAll(df_duplicate).count() == 0
 
 
-def test_df_duplicate_old(simple_df):
+def test_df_duplicate_old_2(simple_df):
     df_old = simple_df
     df_new = simple_df.unionAll(simple_df)
     rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
@@ -195,7 +196,7 @@ def test_count_record_duplicate_old(simple_df):
     )
 
 
-def test_count_record_duplicate_old(simple_df):
+def test_count_record_duplicate_old_2(simple_df):
     df_old = simple_df
     df_new = simple_df.unionAll(simple_df)
     rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
@@ -214,7 +215,7 @@ def test_count_pk_duplicate_old(simple_df):
     )
 
 
-def test_count_pk_duplicate_old(simple_df):
+def test_count_pk_duplicate_old_2(simple_df):
     df_old = simple_df
     df_new = simple_df.unionAll(simple_df)
     rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
@@ -257,14 +258,14 @@ def test_has_symmetric_duplicates_true(simple_df):
     df_old = simple_df.unionAll(simple_df)
     df_new = simple_df.unionAll(simple_df)
     rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
-    assert rt.has_symmetric_duplicates == True
+    assert rt.has_symmetric_duplicates is True
 
 
 def test_has_symmetric_duplicates_false(simple_df):
     df_old = simple_df.unionAll(simple_df)
     df_new = simple_df
     rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
-    assert rt.has_symmetric_duplicates == False
+    assert rt.has_symmetric_duplicates is False
 
 
 def test_df_orphan_old(simple_df):
@@ -526,7 +527,7 @@ def test_diff(spark_session):
     assert rt.count_pk_comparable == 22
     assert rt.count_record_diff == 20
     assert rt.count_pk_diff == 20
-    assert rt.success == False  # Diffs constitute a failure
+    assert rt.success is False  # Diffs constitute a failure
     assert (
         tabulate(
             rt.df_diff.orderBy(
@@ -569,8 +570,8 @@ def test_diff(spark_session):
 | attr_str       | string      |   11 | 'rpad added'        | 'rpad added  '       | padding added (right)            |
 | attr_str       | string      |   12 | 'CAP REMOVED'       | 'Cap Removed'        | capitalization removed           |
 | attr_str       | string      |   13 | 'Cap Added'         | 'CAP ADDED'          | capitalization added             |
-| attr_str       | string      |   14 | 'decap removed'     | 'DeCap Removed'      | decapitalization removed         |
-| attr_str       | string      |   15 | 'DeCap Added'       | 'decap added'        | decapitalization added           |
+| attr_str       | string      |   14 | 'decap removed'     | 'DeCap Removed'      | capitalization added             |
+| attr_str       | string      |   15 | 'DeCap Added'       | 'decap added'        | capitalization removed           |
 | attr_str       | string      |   16 | 'Cap changed'       | 'cAP CHANGED'        | capitalization changed           |
 | attr_str       | string      |   17 | 'truncation added'  | 'trunca'             | truncation added                 |
 | attr_str       | string      |   18 | 'trunca'            | 'truncation removed' | truncation removed               |
