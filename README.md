@@ -3,7 +3,10 @@ A tool for regression testing Spark Dataframes in Python.
 
 ## Installation
 ### Via pip
-You can install via pip: `pip install pyspark-regression==1.0`
+You can install via pip:
+```bash
+pip install pyspark-regression==1.0
+```
 **Note:** This requires a working intallation of Spark 3+ and `pyspark>=3`.
 
 ### Via Git
