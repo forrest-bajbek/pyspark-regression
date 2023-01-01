@@ -1,10 +1,11 @@
 docker-build:
-	docker build -t pyspark-regression:3.3 .
+	docker build -t pyspark-regression:1.0 .
 
 test: docker-build
-	docker run -it --rm --entrypoint pytest pyspark-regression:3.3
+	docker run -it --rm --entrypoint pytest pyspark-regression:1.0
 
 build: test
+	rm -rf dist
 	pip install build
 	python -m build
 

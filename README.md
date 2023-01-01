@@ -3,27 +3,27 @@ A tool for regression testing Spark Dataframes in Python.
 
 ## Installation
 ### Via pip
-You can install via pip: `pip install pyspark-regression==3.3`
-**Note:** This library requires a working intallation of Spark 3.3.# and `pyspark>=3.3,<3.4`.
+You can install via pip: `pip install pyspark-regression==1.0`
+**Note:** This requires a working intallation of Spark 3+ and `pyspark>=3`.
 
 ### Via Git
-You can also install via git:
+To install via git:
 ```bash
 git clone https://github.com/forrest-bajbek/pyspark-regression.git
 cd pyspark-regression
 pip install .
 ```
+**Note:** This requires a working intallation of Spark 3+ and `pyspark>=3`.
 
 ### Via Docker
-To build and then test the container:
+To build and then test the Docker Image:
 ```bash
 git clone https://github.com/forrest-bajbek/pyspark-regression.git
 cd pyspark-regression
-make build
 make test
 ```
 
-Image in Docker Hub coming soon.
+Images in Docker Hub coming soon.
 
 ## What is a Regression Test?
 A [Regression Test](https://en.wikipedia.org/wiki/Regression_testing) ensures that changes to code only produce expected outcomes, introducing no _new_ bugs. These tests are particularly challenging when working with database tables, as the result can be too large to visually inspect. When updating a SQL transformation, Data Engineers must ensure that no rows or columns were unintentionally altered, even if the table has 300 columns and 400 billion rows.
@@ -130,16 +130,16 @@ Printing Regression Report...
 
 The `RegressionTest` class provides low level access to all the methods used to build the summary:
 ```python
->>> print(rt.count_record_old) # count of records in df_old
+>>> print(regression_test.count_record_old) # count of records in df_old
 3
 
->>> print(rt.count_record_new) # count of records in df_new
+>>> print(regression_test.count_record_new) # count of records in df_new
 3
 
->>> print(rt.columns_diff) # Columns with diffs
+>>> print(regression_test.columns_diff) # Columns with diffs
 {'name', 'price'}
 
->>> rt.df_diff.filter("column_name = 'price'").show() # Show all diffs for 'price' column
+>>> regression_test.df_diff.filter("column_name = 'price'").show() # Show all diffs for 'price' column
 +-----------+---------+---+---------+---------+-------------+
 |column_name|data_type| pk|old_value|new_value|diff_category|
 +-----------+---------+---+---------+---------+-------------+

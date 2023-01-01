@@ -1,4 +1,4 @@
-FROM apache/spark-py:3.3.1
+FROM apache/spark-py:latest
 
 # set working directory
 WORKDIR /usr/src/pyspark-regression
