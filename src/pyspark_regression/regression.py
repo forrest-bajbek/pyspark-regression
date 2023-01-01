@@ -1,16 +1,15 @@
-from datetime import datetime
-from time import perf_counter
-from uuid import UUID, uuid4
-from typing import List, Tuple, Set
 from dataclasses import dataclass
-from tabulate import tabulate
-from pyspark.sql import SparkSession
+from datetime import datetime
+from functools import cached_property
+from typing import Set, Tuple
+from uuid import UUID, uuid4
+
+from pyspark.sql import SparkSession, Window
 from pyspark.sql import functions as F
-from pyspark.sql import Window
 from pyspark.sql.column import Column
 from pyspark.sql.dataframe import DataFrame
-from pyspark.sql.types import StringType, LongType, StructType, StructField
-
+from pyspark.sql.types import LongType, StringType, StructField, StructType
+from tabulate import tabulate
 
 spark = SparkSession.builder.getOrCreate()
 
@@ -81,37 +80,37 @@ class RegressionTest:
 
     # Schema Analysis
     # -------------------------------------------------------------------------
-    @property
+    @cached_property
     def columns_old(self) -> Set[str]:
         "Columns in df_old"
         return set([col for col in self.df_old.columns if not col == "pk"])
 
-    @property
+    @cached_property
     def columns_new(self) -> Set[str]:
         "Columns in df_new"
         return set([col for col in self.df_new.columns if not col == "pk"])
 
-    @property
+    @cached_property
     def columns_all(self) -> Set[str]:
         "All columns between df_old and df_new"
         return self.columns_new.union(self.columns_old)
 
-    @property
+    @cached_property
     def columns_added(self) -> Set[str]:
         "Columns in df_new that are not in df_old"
         return self.columns_new.difference(self.columns_old)
 
-    @property
+    @cached_property
     def columns_removed(self) -> Set[str]:
         "Columns in df_old that are not in df_new"
         return self.columns_old.difference(self.columns_new)
 
-    @property
+    @cached_property
     def columns_kept(self) -> Set[str]:
         "Columns that are in both df_old and df_new"
         return self.columns_old.intersection(self.columns_new)
 
-    @property
+    @cached_property
     def schema_mutations(self) -> Set[SchemaMutation]:
         "Detail for all schema mutations between df_old and df_new"
         schema_mutations = set()
@@ -130,37 +129,37 @@ class RegressionTest:
                     )
         return schema_mutations
 
-    @property
+    @cached_property
     def schema_mutations_type(self) -> Set[str]:
         "Detail for schema mutations of 'data_type' attribute"
         return set([sm for sm in self.schema_mutations if sm.attribute == "type"])
 
-    @property
+    @cached_property
     def schema_mutations_nullable(self) -> Set[str]:
         "Detail for schema mutations of 'nullable' attribute"
         return set([sm for sm in self.schema_mutations if sm.attribute == "nullable"])
 
-    @property
+    @cached_property
     def schema_mutations_metadata(self) -> Set[str]:
         "Detail for schema mutations of 'metadata' attribute"
         return set([sm for sm in self.schema_mutations if sm.attribute == "metadata"])
 
-    @property
+    @cached_property
     def columns_changed_type(self) -> Set[str]:
         "Columns in both df_old and df_new for which their 'data_type' attribute changed"
         return set([sm.column_name for sm in self.schema_mutations_type])
 
-    @property
+    @cached_property
     def columns_changed_nullable(self) -> Set[str]:
         "Columns in both df_old and df_new for which their 'nullable' attribute changed"
         return set([sm.column_name for sm in self.schema_mutations_nullable])
 
-    @property
+    @cached_property
     def columns_changed_metadata(self) -> Set[str]:
         "Columns in both df_old and df_new for which their 'metadata' attribute changed"
         return set([sm.column_name for sm in self.schema_mutations_metadata])
 
-    @property
+    @cached_property
     def columns_comparable(self) -> Set[str]:
         """
         Columns that can be compared for regression test. Comparable columns (1) must be
@@ -172,22 +171,22 @@ class RegressionTest:
 
     # Base Table Info
     # -------------------------------------------------------------------------
-    @property
+    @cached_property
     def count_record_old(self) -> int:
         "Count of records in df_old"
         return self.df_old.count()
 
-    @property
+    @cached_property
     def count_record_new(self) -> int:
         "Count of records in df_new"
         return self.df_new.count()
 
-    @property
+    @cached_property
     def count_pk_old(self) -> int:
         "Count of pks in df_old"
         return self.df_old.select(F.col("pk")).distinct().count()
 
-    @property
+    @cached_property
     def count_pk_new(self) -> int:
         "Count of pks in df_new"
         return self.df_new.select(F.col("pk")).distinct().count()
@@ -208,12 +207,12 @@ class RegressionTest:
             )  # sort worst offenders first, then pk
         )
 
-    @property
+    @cached_property
     def df_duplicate_old(self) -> DataFrame:
         "DataFrame of duplicate pks in old table, with count of duplicates"
         return self.__df_duplicate(self.df_old)
 
-    @property
+    @cached_property
     def df_duplicate_new(self) -> DataFrame:
         "DataFrame of duplicate pks in new table, with count of duplicates"
         return self.__df_duplicate(self.df_new)
@@ -227,22 +226,22 @@ class RegressionTest:
             ).collect()
         ][0] or 0
 
-    @property
+    @cached_property
     def count_record_duplicate_old(self) -> int:
         "Count of duplicate records in df_old"
         return self.__count_record_duplicate(self.df_duplicate_old)
 
-    @property
+    @cached_property
     def count_record_duplicate_new(self) -> int:
         "Count of duplicate records in df_new"
         return self.__count_record_duplicate(self.df_duplicate_new)
 
-    @property
+    @cached_property
     def count_pk_duplicate_old(self) -> int:
         "Count of pks that have duplicates in df_old"
         return self.df_duplicate_old.count() or 0
 
-    @property
+    @cached_property
     def count_pk_duplicate_new(self) -> int:
         "Count of pks that have duplicates in df_new"
         return self.df_duplicate_new.count() or 0
@@ -256,21 +255,21 @@ class RegressionTest:
             ]
         )
 
-    @property
+    @cached_property
     def sample_pk_duplicate_old(self) -> tuple:
         "num_sample samples of pks that have duplicate records in df_old"
         return self.__sample_pk_duplicate(
             self.df_duplicate_old, num_samples=self.num_samples
         )
 
-    @property
+    @cached_property
     def sample_pk_duplicate_new(self) -> tuple:
         "num_sample samples of pks that have duplicate records in df_new"
         return self.__sample_pk_duplicate(
             self.df_duplicate_new, num_samples=self.num_samples
         )
 
-    @property
+    @cached_property
     def has_symmetric_duplicates(self) -> bool:
         "True if duplicates in df_old and df_new are exactly the same."
         if (
@@ -301,27 +300,27 @@ class RegressionTest:
             .orderBy(F.col("pk"))
         )
 
-    @property
+    @cached_property
     def df_orphan_old(self) -> DataFrame:
         "DataFrame of orphan pks in old table"
         return self.__df_orphan(df=self.df_old, df_anti=self.df_new)
 
-    @property
+    @cached_property
     def df_orphan_new(self) -> DataFrame:
         "DataFrame of orphan pks in new table"
         return self.__df_orphan(df=self.df_new, df_anti=self.df_old)
 
-    @property
+    @cached_property
     def count_pk_orphan_old(self) -> int:
         "Count of pks that are in df_old but not df_new"
         return self.df_orphan_old.count() or 0
 
-    @property
+    @cached_property
     def count_pk_orphan_new(self) -> int:
         "Count of pks that are in df_new but not df_old"
         return self.df_orphan_new.count() or 0
 
-    @property
+    @cached_property
     def sample_pk_orphan_old(self) -> tuple:
         "num_sample samples of pks that are in df_old but not df_new"
         return tuple(
@@ -333,7 +332,7 @@ class RegressionTest:
             ]
         )
 
-    @property
+    @cached_property
     def sample_pk_orphan_new(self) -> tuple:
         "num_sample samples of pks that are in df_new but not df_old"
         return tuple(
@@ -396,7 +395,7 @@ class RegressionTest:
             new_cols.append(f"{p}{col}{s}")
         return df.toDF(*(new_cols))
 
-    @property
+    @cached_property
     def df_comparable(self) -> DataFrame:
         # remove duplicates. they cross join each other
         df_old_no_dups = self.df_old.join(
@@ -413,17 +412,17 @@ class RegressionTest:
 
         return df_comparable
 
-    @property
+    @cached_property
     def count_record_comparable(self) -> int:
         "Count of comparable records between df_old and df_new"
         return self.df_comparable.count()
 
-    @property
+    @cached_property
     def count_pk_comparable(self) -> int:
         "Count of comparable pks between df_old and df_new"
         return self.df_comparable.select(F.col("pk")).distinct().count()
 
-    @property
+    @cached_property
     def df_regression(self) -> DataFrame:
         case_sql, where_sql = self.__generate_regression_sql(
             columns_comparable=self.columns_comparable
@@ -433,17 +432,17 @@ class RegressionTest:
         )
         return df_regression
 
-    @property
+    @cached_property
     def count_record_diff(self) -> int:
         "Count of records with diffs"
         return self.df_regression.count() or 0
 
-    @property
+    @cached_property
     def count_pk_diff(self) -> int:
         "Count of pks with diffs"
         return self.df_regression.select(F.col("pk")).distinct().count() or 0
 
-    @property
+    @cached_property
     def df_diff_cols(self) -> DataFrame:
         return (
             self.df_regression.select(F.explode(F.col("diff_cols")).alias("diff_cols"))
@@ -451,7 +450,7 @@ class RegressionTest:
             .orderBy(F.col("diff_cols"))
         )
 
-    @property
+    @cached_property
     def columns_diff(self) -> Set[str]:
         "Columns containing at least one value difference between df_old and df_new"
         return set([row.diff_cols for row in self.df_diff_cols.collect()])
@@ -460,7 +459,7 @@ class RegressionTest:
 
     # Regression Test Results
     # -------------------------------------------------------------------------
-    @property
+    @cached_property
     def success(self) -> bool:
         """
         Whether the table passed regression test.
@@ -511,9 +510,9 @@ class RegressionTest:
                 .when(F.ltrim(x) == y, F.lit("padding removed (left)"))
                 .when(F.rtrim(x) == y, F.lit("padding removed (right)"))
                 .when(F.upper(x) == y, F.lit("capitalization added"))
+                .when(F.lower(y) == x, F.lit("capitalization added"))
                 .when(F.upper(y) == x, F.lit("capitalization removed"))
-                .when(F.lower(x) == y, F.lit("decapitalization added"))
-                .when(F.lower(y) == x, F.lit("decapitalization removed"))
+                .when(F.lower(x) == y, F.lit("capitalization removed"))
                 .when(F.upper(x) == F.upper(y), F.lit("capitalization changed"))
                 .when(x.startswith(y), F.lit("truncation added"))
                 .when(y.startswith(x), F.lit("truncation removed"))
@@ -550,7 +549,7 @@ class RegressionTest:
             .otherwise(col_diff_category)
         )
 
-    @property
+    @cached_property
     def df_diff(self) -> DataFrame:
         "DataFrame containing an unpivoted representation of diffs for a pk,  in a single column, between df_old and df_new"
 
@@ -603,7 +602,7 @@ class RegressionTest:
             F.col("column_name"), F.col("diff_category"), F.col("pk")
         )
 
-    @property
+    @cached_property
     def df_diff_summary(self) -> DataFrame:
         "A summary of df_diff, aggregating a count of records/pks"
         return (
@@ -629,7 +628,7 @@ class RegressionTest:
         )
 
     # For each column_name and diff_category, provide samples
-    @property
+    @cached_property
     def df_diff_sample(self) -> DataFrame:
         "Same as df_diff, but limited to num_sample rows per column per diff category"
         return (
@@ -648,78 +647,78 @@ class RegressionTest:
 
     # -------------------------------------------------------------------------
 
-    # Reports
+    # Summary
     # -------------------------------------------------------------------------
-    @property
-    def report(self) -> str:
+    @cached_property
+    def summary(self) -> str:
         """
-        A string-based report that summarizes the results of the Regression Test in Markdown. Intended for the Quality Notebook.
+        A string-based summary that summarizes the results of the Regression Test in Markdown. Intended for the Quality Notebook.
         """
-        report = str()
+        summary = str()
 
-        report += f"\n# Regression Test: {self.table_name}"
-        report += f"\n- run_id: {self.run_id}"
-        report += f"\n- run_time: {str(self.run_time)}"
+        summary += f"\n# Regression Test: {self.table_name}"
+        summary += f"\n- run_id: {self.run_id}"
+        summary += f"\n- run_time: {str(self.run_time)}"
 
         if self.success:
-            report += "\n\n## Test Results: SUCCESS"
+            summary += "\n\n## Result: SUCCESS"
         else:
-            report += "\n\n## Test Results: **FAILURE**."
-            report += "\nPrinting Regression Report..."
+            summary += "\n\n## Result: **FAILURE**."
+            summary += "\nPrinting Summary..."
 
-            report += "\n\n### Table stats"
-            report += (
+            summary += "\n\n### Table stats"
+            summary += (
                 f"\n- Count records in old {self.table_name}: {self.count_record_old}"
             )
-            report += (
+            summary += (
                 f"\n- Count records in new {self.table_name}: {self.count_record_new}"
             )
-            report += f"\n- Count pks in old {self.table_name}: {self.count_pk_old}"
-            report += f"\n- Count pks in new {self.table_name}: {self.count_pk_new}"
+            summary += f"\n- Count pks in old {self.table_name}: {self.count_pk_old}"
+            summary += f"\n- Count pks in new {self.table_name}: {self.count_pk_new}"
 
         if self.columns_added or self.columns_removed:
-            report += f"\n\n### Column Changes"
-            report += f"\n- Columns Added: {list(self.columns_added)}"
+            summary += "\n\n### Column Changes"
+            summary += f"\n- Columns Added: {list(self.columns_added)}"
             if self.columns_removed:
-                report += f"\n- Columns Removed: {list(self.columns_removed)}"
+                summary += f"\n- Columns Removed: {list(self.columns_removed)}"
 
         if self.schema_mutations:
-            report += f"\n\n### Schema Mutations"
+            summary += "\n\n### Schema Mutations"
             for sm in self.schema_mutations:
-                report += f"\n- For column '{sm.column_name}', attribute '{sm.attribute}' changed from '{sm.value_old}' to '{sm.value_new}'."
+                summary += f"\n- For column '{sm.column_name}', attribute '{sm.attribute}' changed from '{sm.value_old}' to '{sm.value_new}'."
 
         if self.count_record_duplicate_old or self.count_record_duplicate_new:
-            report += f"\n\n### Duplicates"
-            report += f"\n- Count of duplicate records in old {self.table_name}: {self.count_record_duplicate_old} (%oT: {(self.count_record_duplicate_old / self.count_record_old):.1%})"
-            report += f"\n- Count of duplicate records in new {self.table_name}: {self.count_record_duplicate_new} (%oT: {(self.count_record_duplicate_new / self.count_record_new):.1%})"
-            report += f"\n- Count of duplicate pks in old {self.table_name}: {self.count_pk_duplicate_old} (%oT: {(self.count_pk_duplicate_old / self.count_pk_old):.1%})"
-            report += f"\n- Count of duplicate pks in new {self.table_name}: {self.count_pk_duplicate_new} (%oT: {(self.count_pk_duplicate_new / self.count_pk_new):.1%})"
-            report += f"\n- Sample of duplicate pks in old {self.table_name}: {[str(sample) for sample in self.sample_pk_duplicate_old]}"
-            report += f"\n- Sample of duplicate pks in new {self.table_name}: {[str(sample) for sample in self.sample_pk_duplicate_new]}"
+            summary += "\n\n### Duplicates"
+            summary += f"\n- Count of duplicate records in old {self.table_name}: {self.count_record_duplicate_old} (%oT: {(self.count_record_duplicate_old / self.count_record_old):.1%})"
+            summary += f"\n- Count of duplicate records in new {self.table_name}: {self.count_record_duplicate_new} (%oT: {(self.count_record_duplicate_new / self.count_record_new):.1%})"
+            summary += f"\n- Count of duplicate pks in old {self.table_name}: {self.count_pk_duplicate_old} (%oT: {(self.count_pk_duplicate_old / self.count_pk_old):.1%})"
+            summary += f"\n- Count of duplicate pks in new {self.table_name}: {self.count_pk_duplicate_new} (%oT: {(self.count_pk_duplicate_new / self.count_pk_new):.1%})"
+            summary += f"\n- Sample of duplicate pks in old {self.table_name}: {[str(sample) for sample in self.sample_pk_duplicate_old]}"
+            summary += f"\n- Sample of duplicate pks in new {self.table_name}: {[str(sample) for sample in self.sample_pk_duplicate_new]}"
             if self.has_symmetric_duplicates:
-                report += "\n**NOTE: Duplicates are exactly the same between df_old and df_new**"
+                summary += "\n**NOTE: Duplicates are exactly the same between df_old and df_new**"
 
         if self.count_pk_orphan_old or self.count_pk_orphan_new:
-            report += f"\n\n### Orphans"
-            report += f"\n- Count of orphan pks in old {self.table_name}: {self.count_pk_orphan_old} (%oT: {(self.count_pk_orphan_old / self.count_pk_old):.1%})"
-            report += f"\n- Count of orphan pks in new {self.table_name}: {self.count_pk_orphan_new} (%oT: {(self.count_pk_orphan_new / self.count_pk_new):.1%})"
-            report += f"\n- Sample of orphan pks in old {self.table_name}: {[str(sample) for sample in self.sample_pk_orphan_old]}"
-            report += f"\n- Sample of orphan pks in new {self.table_name}: {[str(sample) for sample in self.sample_pk_orphan_new]}"
+            summary += "\n\n### Orphans"
+            summary += f"\n- Count of orphan pks in old {self.table_name}: {self.count_pk_orphan_old} (%oT: {(self.count_pk_orphan_old / self.count_pk_old):.1%})"
+            summary += f"\n- Count of orphan pks in new {self.table_name}: {self.count_pk_orphan_new} (%oT: {(self.count_pk_orphan_new / self.count_pk_new):.1%})"
+            summary += f"\n- Sample of orphan pks in old {self.table_name}: {[str(sample) for sample in self.sample_pk_orphan_old]}"
+            summary += f"\n- Sample of orphan pks in new {self.table_name}: {[str(sample) for sample in self.sample_pk_orphan_new]}"
 
         if self.count_record_diff:
-            report += f"\n\n### Diffs"
-            report += f"\n- Columns with diffs: {self.columns_diff}"
-            report += f"\n- Number of records with diffs: {self.count_record_diff} (%oT: {(self.count_record_diff / self.count_record_comparable):.1%})"
-            report += f"\n\n Diff Summary:\n"
-            report += tabulate(
+            summary += "\n\n### Diffs"
+            summary += f"\n- Columns with diffs: {self.columns_diff}"
+            summary += f"\n- Number of records with diffs: {self.count_record_diff} (%oT: {(self.count_record_diff / self.count_record_comparable):.1%})"
+            summary += "\n\n Diff Summary:\n"
+            summary += tabulate(
                 self.df_diff_summary.toPandas(),
                 headers="keys",
                 missingval="NULL",
                 tablefmt="pipe",
                 showindex=False,
             )
-            report += f"\n\n Diff Samples: (5 samples per column_name, per diff_category, per is_duplicate)\n"
-            report += tabulate(
+            summary += "\n\n Diff Samples: (5 samples per column_name, per diff_category, per is_duplicate)\n"
+            summary += tabulate(
                 self.df_diff_sample.toPandas(),
                 headers="keys",
                 missingval="NULL",
@@ -727,10 +726,6 @@ class RegressionTest:
                 showindex=False,
             )
 
-        return report
-
-    @property
-    def change_log(self):
-        pass
+        return summary
 
     # -------------------------------------------------------------------------
