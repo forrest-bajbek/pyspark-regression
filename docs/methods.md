@@ -1,2 +1,0 @@
-# Methods
-Coming soon.

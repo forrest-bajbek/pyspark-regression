@@ -7,8 +7,7 @@ nav:
     - 'index.md'
     - 'installation.md'
     - 'examples.md'
-    - 'classes.md'
-    - 'methods.md'
+    - 'reference.md'
 
 theme:
   name: material
@@ -30,6 +29,9 @@ theme:
       toggle:
         icon: material/brightness-4
         name: Switch to system preference
+
+plugins:
+  - mkdocstrings
 
 markdown_extensions:
   - pymdownx.highlight:
