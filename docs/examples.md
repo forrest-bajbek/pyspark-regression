@@ -8,6 +8,7 @@ Consider the following table:
 | 3 | flauta | 7.50 |
 
 Imagine you are a Data Engineer, and you want to change the underlying ETL so that:
+
 1. The price for Tacos is rounded to 2 decimal places.
 1. The name for Flautas is capitalized.
 
