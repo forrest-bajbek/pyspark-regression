@@ -1,7 +1,7 @@
 # pyspark-regression
 A tool for regression testing Spark Dataframes in Python.
 
-For documentation, please visit https://pyspark-regression.readthedocs.io
+For documentation, please visit https://forrest-bajbek.github.io/pyspark-regression/
 
 ## Installation
 ### Via pip
@@ -156,4 +156,4 @@ from pyspark_regression.example import regression_test
 print(regression_test.summary)
 ```
 
-For more information on these methods, please see the [docs](https://pyspark-regression.readthedocs.io).
+For more information on these methods, please see the [docs](https://forrest-bajbek.github.io/pyspark-regression/).
