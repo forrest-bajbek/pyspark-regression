@@ -1,6 +1,8 @@
 # pyspark-regression
 A tool for regression testing Spark Dataframes in Python.
 
+For documentation, please visit https://pyspark-regression.readthedocs.io
+
 ## Installation
 ### Via pip
 You can install via pip:
@@ -25,8 +27,6 @@ git clone https://github.com/forrest-bajbek/pyspark-regression.git
 cd pyspark-regression
 make test
 ```
-
-Images in Docker Hub coming soon.
 
 ## What is a Regression Test?
 A [Regression Test](https://en.wikipedia.org/wiki/Regression_testing) ensures that changes to code only produce expected outcomes, introducing no _new_ bugs. These tests are particularly challenging when working with database tables, as the result can be too large to visually inspect. When updating a SQL transformation, Data Engineers must ensure that no rows or columns were unintentionally altered, even if the table has 300 columns and 400 billion rows.
@@ -156,4 +156,4 @@ from pyspark_regression.example import regression_test
 print(regression_test.summary)
 ```
 
-For more information on these methods, please see the docs (coming soon).
+For more information on these methods, please see the [docs](https://pyspark-regression.readthedocs.io).
