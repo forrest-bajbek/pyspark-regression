@@ -14,4 +14,4 @@ deploy-dev: build
 	python -m twine upload --repository testpypi dist/*
 
 deploy: test
-	python -m twine dist/*
+	python -m twine upload dist/*
