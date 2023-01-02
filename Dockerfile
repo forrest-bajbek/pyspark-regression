@@ -9,8 +9,7 @@ WORKDIR /usr/src/pyspark-regression
 
 # install app
 USER root
-COPY . .
-RUN pip install .[dev]
+RUN pip install pyspark-regression
 USER ${spark_uid}
 
 # add entrypoint

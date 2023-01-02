@@ -15,11 +15,11 @@ build: test
 deploy-dev: build
 	python -m twine upload --repository testpypi dist/*
 
-deploy: test
+deploy: build
 	python -m twine upload dist/*
 
 docker-build:
-	docker build -t pyspark-regression:1.1 .
+	docker build -t pyspark-regression:1.1.1 .
 
 docker-test: docker-build
-	docker run -it --rm --entrypoint /bin/sh pyspark-regression:1.1 -c "python3 -m pytest"
+	docker run -it --rm --entrypoint /bin/sh pyspark-regression:1.1.1 -c "python3 -m pytest"
