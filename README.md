@@ -1,32 +1,10 @@
 # pyspark-regression
 A tool for regression testing Spark Dataframes in Python.
 
-For documentation, please visit https://forrest-bajbek.github.io/pyspark-regression/
+`pyspark-regression` is a tool for regression testing Spark Dataframes in Python.
 
-## Installation
-### Via pip
-You can install via pip:
-```bash
-pip install pyspark-regression==1.0
-```
-**Note:** This requires a working installation of Spark 3+ and `pyspark>=3`.
+For install instructions and API documentation, please visit https://forrest-bajbek.github.io/pyspark-regression/
 
-### Via Git
-To install via git:
-```bash
-git clone https://github.com/forrest-bajbek/pyspark-regression.git
-cd pyspark-regression
-pip install .
-```
-**Note:** This requires a working installation of Spark 3+ and `pyspark>=3`.
-
-### Via Docker
-To build and then test the Docker Image:
-```bash
-git clone https://github.com/forrest-bajbek/pyspark-regression.git
-cd pyspark-regression
-make test
-```
 
 ## What is a Regression Test?
 A [Regression Test](https://en.wikipedia.org/wiki/Regression_testing) ensures that changes to code only produce expected outcomes, introducing no _new_ bugs. These tests are particularly challenging when working with database tables, as the result can be too large to visually inspect. When updating a SQL transformation, Data Engineers must ensure that no rows or columns were unintentionally altered, even if the table has 300 columns and 400 billion rows.
@@ -35,6 +13,7 @@ A [Regression Test](https://en.wikipedia.org/wiki/Regression_testing) ensures th
 
 ## Example
 Consider the following table:
+
 | id | name | price |
 | - | - | - |
 | 1 | Taco | 3.001 |
@@ -42,10 +21,12 @@ Consider the following table:
 | 3 | flauta | 7.50 |
 
 Imagine you are a Data Engineer, and you want to change the underlying ETL so that:
+
 1. The price for Tacos is rounded to 2 decimal places.
 1. The name for Flautas is capitalized.
 
 You make your changes, and the new table looks like this:
+
 | id | name | price |
 | - | - | - |
 | 1 | Taco | **3.00** |
@@ -155,5 +136,3 @@ This example is accessable from the module:
 from pyspark_regression.example import regression_test
 print(regression_test.summary)
 ```
-
-For more information on these methods, please see the [docs](https://forrest-bajbek.github.io/pyspark-regression/).

@@ -1,23 +1,17 @@
-FROM apache/spark-py:latest
-
-# set working directory
-WORKDIR /usr/src/pyspark-regression
+FROM apache/spark-py:3.3.1
 
 # set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-# install python dependencies
-USER root
-COPY ./requirements.txt .
-COPY ./requirements-dev.txt .
-RUN pip install --upgrade pip
-RUN pip install -r requirements-dev.txt
+# set working directory
+WORKDIR /usr/src/pyspark-regression
 
-# add app
-USER ${spark_uid}
+# install app
+USER root
 COPY . .
-RUN pip install .
+RUN pip install .[dev]
+USER ${spark_uid}
 
 # add entrypoint
 ENTRYPOINT ["/opt/spark/bin/pyspark"]
