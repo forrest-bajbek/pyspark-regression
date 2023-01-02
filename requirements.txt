@@ -1,3 +1,0 @@
-pandas
-pyspark>=3
-tabulate

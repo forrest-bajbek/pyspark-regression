@@ -6,11 +6,15 @@ repo_url: https://github.com/forrest-bajbek/pyspark-regression
 nav:
     - 'index.md'
     - 'installation.md'
-    - 'examples.md'
-    - 'reference.md'
+    - 'API Reference':
+      - 'api_reference/RegressionTest.md'
+      - 'api_reference/SchemaMutation.md'
 
 theme:
   name: material
+  features:
+    - navigation.tracking
+    - toc.follow
   palette:
     # Palette toggle for automatic mode
     - media: "(prefers-color-scheme)"
@@ -39,3 +43,8 @@ markdown_extensions:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - toc:
+      permalink: true
