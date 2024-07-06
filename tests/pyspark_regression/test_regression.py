@@ -20,7 +20,7 @@ from pyspark_regression.regression import RegressionTest, SchemaMutation
 
 
 @pytest.fixture(scope="session")
-def spark_session():
+def spark():
     return SparkSession.builder.config(
         "spark.sql.shuffle.partitions", "1"
     ).getOrCreate()
@@ -38,13 +38,13 @@ def simple_schema():
 
 
 @pytest.fixture(scope="session")
-def empty_df(spark_session, simple_schema):
-    return spark_session.createDataFrame([], schema=simple_schema)
+def empty_df(spark, simple_schema):
+    return spark.createDataFrame([], schema=simple_schema)
 
 
 @pytest.fixture(scope="session")
-def simple_df(spark_session, simple_schema):
-    return spark_session.createDataFrame(
+def simple_df(spark, simple_schema):
+    return spark.createDataFrame(
         [
             (1, "a", "!"),
             (2, "b", "@"),
@@ -356,7 +356,7 @@ def test_count_pk_comparable(simple_df):
     assert rt.count_pk_comparable == simple_df.select(F.col("id")).distinct().count()
 
 
-def test_diff(spark_session):
+def test_diff(spark):
     schema = StructType(
         [
             StructField("id", IntegerType()),
@@ -370,7 +370,7 @@ def test_diff(spark_session):
         ]
     )
 
-    df_old = spark_session.createDataFrame(
+    df_old = spark.createDataFrame(
         [
             (1, None, True, None, None, None, None, None),  # NULL -> NULL (same)
             (
@@ -443,7 +443,7 @@ def test_diff(spark_session):
         schema=schema,
     )
 
-    df_new = spark_session.createDataFrame(
+    df_new = spark.createDataFrame(
         [
             (1, None, True, None, None, None, None, None),  # NULL -> NULL (same)
             (

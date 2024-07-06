@@ -45,3 +45,6 @@ regression_test = RegressionTest(
     df_new=df_new,
     pk="id",
 )
+
+
+print(regression_test.summary)
