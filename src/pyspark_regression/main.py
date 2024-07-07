@@ -1,7 +1,8 @@
+import functools
 from dataclasses import dataclass
 from datetime import datetime
 from functools import cached_property
-# from pathlib import Path
+from pathlib import Path
 from uuid import uuid4
 
 from pyspark.sql import SparkSession, Window, functions as F
@@ -37,6 +38,7 @@ class RegressionTest:
         table_name: str = "df",
         num_samples: int = 5,
         sort_samples: bool = False,
+
     ):
         """A class with methods for regression testing between two DataFrames.
 
@@ -82,11 +84,13 @@ class RegressionTest:
         self.run_id = str(uuid4())
         "The regression test's unique identifier"
 
-        # p = Path(f"/tmp/pyspark-regression/{self.run_id}")
-        # p.parent.mkdir(exist_ok=True)
-        # spark.sparkContext.setCheckpointDir(p.as_posix())
-        # self._df_cache: dict[str, DataFrame] = dict()
+        p = Path(f"/tmp/pyspark-regression/{self.run_id}")
+        p.parent.mkdir(exist_ok=True)
+        spark.sparkContext.setCheckpointDir(p.as_posix())
+        self._df_cache: dict[str, DataFrame] = dict()
 
+    # Metadata
+    # ---------------------------------------------------------------------------------
     @cached_property
     def columns_old(self) -> set[str]:
         "Columns in `df_old`"
@@ -175,6 +179,8 @@ class RegressionTest:
         """
         return self.columns_kept.difference(self.columns_changed_type)
 
+    # Table info
+    # ---------------------------------------------------------------------------------
     @cached_property
     def count_record_old(self) -> int:
         "Count of records in `df_old`"
@@ -195,6 +201,8 @@ class RegressionTest:
         "Count of primary keys in `df_new`"
         return self.df_new.select(F.col("pk")).distinct().count()
 
+    # Duplicates
+    # ---------------------------------------------------------------------------------
     @staticmethod
     def _df_duplicate(df: DataFrame, sort_samples: bool) -> DataFrame:
         df_result = (
@@ -207,15 +215,27 @@ class RegressionTest:
             return df_result.orderBy([F.col("count_record_duplicate").desc(), F.col("pk")])
         return df_result
 
-    @cached_property
+    @property
     def df_duplicate_old(self) -> DataFrame:
         "DataFrame containing all duplicate primary keys (and their counts) in `df_old`"
-        return self._df_duplicate(self.df_old, sort_samples=self.sort_samples)
+        df_cached = self._df_cache.get("df_duplicate_old")
+        if df_cached:
+            return df_cached
+        df_duplicate_old = self._df_duplicate(self.df_old, sort_samples=self.sort_samples)
 
-    @cached_property
+        self._df_cache["df_duplicate_old"] = df_duplicate_old.checkpoint(eager=False)
+        return df_duplicate_old
+
+    @property
     def df_duplicate_new(self) -> DataFrame:
         "DataFrame containing all duplicate primary keys (and their counts) in `df_new`"
-        return self._df_duplicate(self.df_new, sort_samples=self.sort_samples)
+        df_cached = self._df_cache.get("df_duplicate_new")
+        if df_cached:
+            return df_cached
+        df_duplicate_new = self._df_duplicate(self.df_new, sort_samples=self.sort_samples)
+
+        self._df_cache["df_duplicate_new"] = df_duplicate_new.checkpoint(eager=False)
+        return df_duplicate_new
 
     @staticmethod
     def _count_record_duplicate(df_duplicate: DataFrame) -> int:
@@ -275,6 +295,8 @@ class RegressionTest:
                 flag = True
         return flag
 
+    # Orphans
+    # ---------------------------------------------------------------------------------
     @staticmethod
     def _df_orphan(df: DataFrame, df_anti: DataFrame, sort_samples: bool) -> DataFrame:
         df_results = (
@@ -287,15 +309,27 @@ class RegressionTest:
             return df_results.orderBy(F.col("pk"))
         return df_results
 
-    @cached_property
+    @property
     def df_orphan_old(self) -> DataFrame:
         "DataFrame containing primary keys in `df_old` that are not in `df_new`"
-        return self._df_orphan(df=self.df_old, df_anti=self.df_new, sort_samples=self.sort_samples)
+        df_cached = self._df_cache.get("df_orphan_old")
+        if df_cached:
+            return df_cached
+        df_orphan_old = self._df_orphan(df=self.df_old, df_anti=self.df_new, sort_samples=self.sort_samples)
 
-    @cached_property
+        self._df_cache["df_orphan_old"] = df_orphan_old.checkpoint(eager=False)
+        return df_orphan_old
+
+    @property
     def df_orphan_new(self) -> DataFrame:
         "DataFrame containing primary keys in `df_new` that are not in `df_old`"
-        return self._df_orphan(df=self.df_new, df_anti=self.df_old, sort_samples=self.sort_samples)
+        df_cached = self._df_cache.get("df_orphan_new")
+        if df_cached:
+            return df_cached
+        df_orphan_new = self._df_orphan(df=self.df_new, df_anti=self.df_old, sort_samples=self.sort_samples)
+
+        self._df_cache["df_orphan_new"] = df_orphan_new.checkpoint(eager=False)
+        return df_orphan_new
 
     @cached_property
     def count_orphan_pk_old(self) -> int:
@@ -323,6 +357,8 @@ class RegressionTest:
         "A sample of primary keys in `df_new` that are not in `df_old`"
         return self._sample_orphan_pk(self.df_orphan_new, num_samples=self.num_samples)
 
+    # Regression
+    # ---------------------------------------------------------------------------------
     @cached_property
     def df_comparable(self) -> DataFrame:
         """
@@ -333,6 +369,10 @@ class RegressionTest:
         2. Are not orphans
         3. Have matching primary keys between `df_old` and `df_new`
         """
+        df_cached = self._df_cache.get("df_comparable")
+        if df_cached:
+            return df_cached
+
         df_old_dups_none = self.df_old.join(self.df_duplicate_old, how="left_anti", on=["pk"]).select(["pk"] + list(self.columns_comparable))
         df_new_dups_none = self.df_new.join(self.df_duplicate_new, how="left_anti", on=["pk"]).select(["pk"] + list(self.columns_comparable))
 
@@ -342,6 +382,8 @@ class RegressionTest:
         df_old_dups_none_renamed = prefix_columns(df=df_old_dups_none, prefix="old")
         df_new_dups_none_renamed = prefix_columns(df=df_new_dups_none, prefix="new")
         df_comparable = df_old_dups_none_renamed.join(df_new_dups_none_renamed, on=["pk"])
+
+        self._df_cache["df_comparable"] = df_comparable.checkpoint(eager=False)
         return df_comparable
 
     @cached_property
@@ -354,7 +396,7 @@ class RegressionTest:
         "Count of primary keys that are eligible for regression testing"
         return self.df_comparable.select(F.col("pk")).distinct().count()
 
-    @cached_property
+    @property
     def df_regression(self) -> DataFrame:
         """
         DataFrame that:
@@ -362,13 +404,17 @@ class RegressionTest:
         2. Filters out duplicates
         3. Filters for at least one column with diffs
         """
+        df_cached = self._df_cache.get("df_regression")
+        if df_cached:
+            return df_cached
+
         case_sql = list()
         where_sql = list()
         for c in self.columns_comparable:
             oc = "old_" + c
             nc = "new_" + c
-            case_sql.append(f"CASE WHEN (({oc} != {nc}) OR ({oc} IS NULL AND {nc} IS NOT NULL) OR ({oc} IS NOT NULL AND {nc} IS NULL)) THEN '{c}' ELSE NULL END")
-            where_sql.append(f"(({oc} != {nc}) OR ({oc} IS NULL AND {nc} IS NOT NULL) OR ({oc} IS NOT NULL AND {nc} IS NULL))")
+            case_sql.append(f"CASE WHEN ((`{oc}` != `{nc}`) OR (`{oc}` IS NULL AND `{nc}` IS NOT NULL) OR (`{oc}` IS NOT NULL AND `{nc}` IS NULL)) THEN '{c}' ELSE NULL END")
+            where_sql.append(f"((`{oc}` != `{nc}`) OR (`{oc}` IS NULL AND `{nc}` IS NOT NULL) OR (`{oc}` IS NOT NULL AND `{nc}` IS NULL))")
         case_expr = f"SPLIT(CONCAT_WS(',', {','.join(case_sql)}), ',')"
         where_expr = " OR ".join(where_sql)
         df_regression = (
@@ -376,6 +422,7 @@ class RegressionTest:
             .filter(F.expr(where_expr))
             .withColumn("diff_cols", F.expr(case_expr))
         )
+        self._df_cache["df_regression"] = df_regression.checkpoint(eager=False)
         return df_regression
 
     @cached_property
@@ -391,11 +438,14 @@ class RegressionTest:
     @cached_property
     def df_diff_cols(self) -> DataFrame:
         "DataFrame of columns that contain diffs"
-        return (
-            self.df_regression
-            .select(F.explode(F.col("diff_cols")).alias("diff_cols"))
-            .distinct()
-        )
+        df_cache = self._df_cache.get("df_diff_cols")
+        if df_cache:
+            return df_cache
+
+        df_diff_cols = self.df_regression.select(F.explode(F.col("diff_cols")).alias("diff_cols")).distinct()
+
+        self._df_cache["df_diff_cols"] = df_diff_cols.checkpoint(eager=False)
+        return df_diff_cols
 
     @cached_property
     def columns_diff(self) -> set[str]:
@@ -431,6 +481,8 @@ class RegressionTest:
         elif data_type in ["float", "double", "decimal"]:
             col_diff_category = (
                 F.when(F.round(old_col, 2) == F.round(new_col, 2), F.lit("rounding"))
+                .when(new_col % old_col == F.lit(0), "multiple")
+                .when(old_col % new_col == F.lit(0), "divisible")
                 .otherwise(col_default)
             )
         elif data_type == "timestamp":
@@ -469,21 +521,14 @@ class RegressionTest:
     @cached_property
     def df_diff(self) -> DataFrame:
         "DataFrame that pivots and filters `df_regression` to show one row, for every row and column containing values that are different"
-        df_diff = spark.createDataFrame(
-            data=[],
-            schema=StructType(
-                [
-                    StructField(name="column_name", dataType=StringType(), nullable=False),
-                    StructField(name="data_type", dataType=StringType(), nullable=False),
-                    StructField(name="pk", dataType=StringType(), nullable=False),
-                    StructField(name="old_value", dataType=StringType()),
-                    StructField(name="new_value", dataType=StringType()),
-                    StructField(name="diff_category", dataType=StringType(), nullable=False),
-                ]
-            )
-        )
+        df_cache = self._df_cache.get("df_diff")
+        if df_cache:
+            return df_cache
+
+        dfs = list()
+        schema = self.df_old.schema
         for col in self.columns_diff:
-            data_type = self.df_old.schema[col].dataType.typeName()
+            data_type = schema[col].dataType.typeName()
             df = (
                 self.df_regression
                 .filter(F.array_contains(F.col("diff_cols"), F.lit(col)))
@@ -496,14 +541,21 @@ class RegressionTest:
                     self._col_diff_category(old_col=F.col(f"old_{col}"), new_col=F.col(f"new_{col}"), data_type=data_type).alias("diff_category"),
                 )
             )
-            df_diff = df_diff.unionAll(df)
+            df.checkpoint(eager=False)
+            dfs.append(df)
 
+        df_diff = functools.reduce(DataFrame.unionAll, dfs)
+        self._df_cache["df_diff"] = df_diff.checkpoint(eager=False)
         return df_diff
 
     @cached_property
     def df_diff_summary(self) -> DataFrame:
         "A transformation of `df_diff` that aggregates by `column_name` and `diff_category`"
-        return (
+        df_cache = self._df_cache.get("df_diff_summary")
+        if df_cache:
+            return df_cache
+
+        df_diff_summary = (
             self.df_diff
             .groupBy(F.col("column_name"), F.col("data_type"), F.col("diff_category"))
             .agg(F.count("pk").alias("count_record"))
@@ -517,10 +569,17 @@ class RegressionTest:
             )
         )
 
+        self._df_cache["df_diff_summary"] = df_diff_summary.checkpoint(eager=False)
+        return df_diff_summary
+
     @cached_property
     def df_diff_sample(self) -> DataFrame:
         "A sample of diffs for every `column_name`, for every `diff_category`"
-        return (
+        df_cache = self._df_cache.get("df_diff_sample")
+        if df_cache:
+            return df_cache
+
+        df_diff_sample = (
             self.df_diff
             .withColumn(
                 "rn",
@@ -535,6 +594,11 @@ class RegressionTest:
             .orderBy(F.col("column_name"), F.col("diff_category"), F.col("pk"))
         )
 
+        self._df_cache["df_diff_sample"] = df_diff_sample.checkpoint(eager=False)
+        return df_diff_sample
+
+    # Summary
+    # ---------------------------------------------------------------------------------
     @property
     def is_success(self) -> bool:
         """
@@ -643,6 +707,6 @@ class RegressionTest:
 
         run_stopped_at = datetime.now()
         duration_formatted = self._duration_format((run_stopped_at - run_started_at).total_seconds())
-        summary.append(f"\n(ran in {duration_formatted})")
+        summary.append(f"\n(ran in {duration_formatted})\n")
 
         return "\n".join(summary)
