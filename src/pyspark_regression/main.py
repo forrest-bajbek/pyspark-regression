@@ -635,10 +635,10 @@ class RegressionTest:
             summary.append(f"- Columns with diffs: {self.columns_diff}")
             summary.append(f"- Number of records with diffs: {self.count_diff_record} (%oT: {(self.count_diff_record / self.count_comparable_record):.1%})")
 
-            summary.append("Diff Summary:")
+            summary.append("\n#### Diff Summary\n")
             summary.append(tabulate(self.df_diff_summary.toPandas(), headers="keys", missingval="NULL", tablefmt="pipe", showindex=False))
 
-            summary.append("Diff Samples:")
+            summary.append("\n#### Diff Samples\n")
             summary.append(tabulate(self.df_diff_sample.toPandas(), headers="keys", missingval="NULL", tablefmt="pipe", showindex=False))
 
         run_stopped_at = datetime.now()
