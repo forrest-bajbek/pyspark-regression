@@ -3,27 +3,15 @@ from datetime import date, datetime
 import pyspark.sql.functions as F
 import pytest
 from pyspark.sql import SparkSession
-from pyspark.sql.types import (
-    BooleanType,
-    DateType,
-    DoubleType,
-    FloatType,
-    IntegerType,
-    StringType,
-    StructField,
-    StructType,
-    TimestampType,
-)
+from pyspark.sql.types import BooleanType, DateType, DoubleType, FloatType, IntegerType, StringType, StructField, StructType, TimestampType
 from tabulate import tabulate
 
-from pyspark_regression.regression import RegressionTest, SchemaMutation
+from pyspark_regression import SchemaMutation, RegressionTest
 
 
 @pytest.fixture(scope="session")
 def spark():
-    return SparkSession.builder.config(
-        "spark.sql.shuffle.partitions", "1"
-    ).getOrCreate()
+    return SparkSession.builder.config("spark.sql.shuffle.partitions", "1").getOrCreate()
 
 
 @pytest.fixture(scope="session")
@@ -167,8 +155,8 @@ def test_df_duplicate_old(simple_df):
     df_duplicate = (
         df_old.select(F.col("id").alias("pk"))
         .groupBy(F.col("pk"))
-        .agg((F.count(F.col("pk")) - 1).alias("count_record_duplicate"))
-        .filter(F.col("count_record_duplicate") > 0)
+        .agg((F.count(F.col("pk")) - 1).alias("count_duplicate_record"))
+        .filter(F.col("count_duplicate_record") > 0)
     )
     assert rt.df_duplicate_old.exceptAll(df_duplicate).count() == 0
 
@@ -180,78 +168,54 @@ def test_df_duplicate_old_2(simple_df):
     df_duplicate = (
         df_new.select(F.col("id").alias("pk"))
         .groupBy(F.col("pk"))
-        .agg((F.count(F.col("pk")) - 1).alias("count_record_duplicate"))
-        .filter(F.col("count_record_duplicate") > 0)
+        .agg((F.count(F.col("pk")) - 1).alias("count_duplicate_record"))
+        .filter(F.col("count_duplicate_record") > 0)
     )
     assert rt.df_duplicate_old.exceptAll(df_duplicate).count() == 0
 
 
-def test_count_record_duplicate_old(simple_df):
+def test_count_duplicate_record_old(simple_df):
     df_old = simple_df.unionAll(simple_df)
     df_new = simple_df
     rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
-    assert (
-        rt.count_record_duplicate_old
-        == df_old.count() - df_old.select(F.col("id")).distinct().count()
-    )
+    assert rt.count_duplicate_record_old == df_old.count() - df_old.select(F.col("id")).distinct().count()
 
 
-def test_count_record_duplicate_old_2(simple_df):
+def test_count_duplicate_record_old_2(simple_df):
     df_old = simple_df
     df_new = simple_df.unionAll(simple_df)
     rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
-    assert (
-        rt.count_record_duplicate_new
-        == df_new.count() - df_new.select(F.col("id")).distinct().count()
-    )
+    assert rt.count_duplicate_record_new == df_new.count() - df_new.select(F.col("id")).distinct().count()
 
 
-def test_count_pk_duplicate_old(simple_df):
+def test_count_duplicate_pk_old(simple_df):
     df_old = simple_df.unionAll(simple_df)
     df_new = simple_df
     rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
-    assert (
-        rt.count_record_duplicate_old == df_old.select(F.col("id")).distinct().count()
-    )
+    assert rt.count_duplicate_record_old == df_old.select(F.col("id")).distinct().count()
 
 
-def test_count_pk_duplicate_old_2(simple_df):
+def test_count_duplicate_pk_old_2(simple_df):
     df_old = simple_df
     df_new = simple_df.unionAll(simple_df)
     rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
-    assert (
-        rt.count_record_duplicate_new == df_new.select(F.col("id")).distinct().count()
-    )
+    assert rt.count_duplicate_record_new == df_new.select(F.col("id")).distinct().count()
 
 
-def test_sample_pk_duplicate_old(simple_df):
+def test_sample_duplicate_pk_old(simple_df):
     df_old = simple_df.unionAll(simple_df)
     df_new = simple_df
     rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
-    assert rt.sample_pk_duplicate_old == tuple(
-        [
-            row.id
-            for row in df_old.select(F.col("id"))
-            .distinct()
-            .orderBy(F.col("id"))
-            .collect()
-        ]
-    )
+    df_result = df_old.select(F.col("id")).distinct().orderBy(F.col("id"))
+    assert rt.sample_duplicate_pk_old == tuple([row.id for row in df_result.collect()])
 
 
-def test_sample_pk_duplicate_new(simple_df):
+def test_sample_duplicate_pk_new(simple_df):
     df_old = simple_df
     df_new = simple_df.unionAll(simple_df)
     rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
-    assert rt.sample_pk_duplicate_new == tuple(
-        [
-            row.id
-            for row in df_new.select(F.col("id"))
-            .distinct()
-            .orderBy(F.col("id"))
-            .collect()
-        ]
-    )
+    df_result = df_new.select(F.col("id")).distinct().orderBy(F.col("id"))
+    assert rt.sample_duplicate_pk_new == tuple([row.id for row in df_result.collect()])
 
 
 def test_has_symmetric_duplicates_true(simple_df):
@@ -272,9 +236,7 @@ def test_df_orphan_old(simple_df):
     df_old = simple_df.unionAll(simple_df)
     df_new = simple_df
     rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
-    df_orphan = (
-        df_old.join(df_new, how="left_anti", on=["id"]).select(F.col("id")).distinct()
-    )
+    df_orphan = df_old.join(df_new, how="left_anti", on=["id"]).select(F.col("id")).distinct()
     assert rt.df_orphan_old.exceptAll(df_orphan).count() == 0
 
 
@@ -282,78 +244,52 @@ def test_df_orphan_new(simple_df):
     df_old = simple_df
     df_new = simple_df.unionAll(simple_df)
     rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
-    df_orphan = (
-        df_new.join(df_old, how="left_anti", on=["id"]).select(F.col("id")).distinct()
-    )
+    df_orphan = df_new.join(df_old, how="left_anti", on=["id"]).select(F.col("id")).distinct()
     assert rt.df_orphan_old.exceptAll(df_orphan).count() == 0
 
 
-def test_count_pk_orphan_old(simple_df):
+def test_count_orphan_pk_old(simple_df):
     df_old = simple_df.unionAll(simple_df)
     df_new = simple_df
     rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
-    count_pk_orphan = (
-        df_old.join(df_new, how="left_anti", on=["id"])
-        .select(F.col("id"))
-        .distinct()
-        .count()
-    )
-    assert rt.count_pk_orphan_old == count_pk_orphan
+    count_orphan_pk = df_old.join(df_new, how="left_anti", on=["id"]).select(F.col("id")).distinct().count()
+    assert rt.count_orphan_pk_old == count_orphan_pk
 
 
-def test_count_pk_orphan_new(simple_df):
+def test_count_orphan_pk_new(simple_df):
     df_old = simple_df
     df_new = simple_df.unionAll(simple_df)
     rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
-    count_pk_orphan = (
-        df_new.join(df_old, how="left_anti", on=["id"])
-        .select(F.col("id"))
-        .distinct()
-        .count()
-    )
-    assert rt.count_pk_orphan_new == count_pk_orphan
+    count_orphan_pk = df_new.join(df_old, how="left_anti", on=["id"]).select(F.col("id")).distinct().count()
+    assert rt.count_orphan_pk_new == count_orphan_pk
 
 
-def test_sample_pk_orphan_old(simple_df):
+def test_sample_orphan_pk_old(simple_df):
     df_old = simple_df.unionAll(simple_df)
     df_new = simple_df
     rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
-    sample_pk_orphan = tuple(
-        [
-            row.id
-            for row in df_old.join(df_new, how="left_anti", on=["id"])
-            .select(F.col("id"))
-            .distinct()
-            .collect()
-        ]
-    )
-    assert rt.sample_pk_orphan_old == sample_pk_orphan
+    df_result = df_old.join(df_new, how="left_anti", on=["id"]).select(F.col("id")).distinct()
+    sample_orphan_pk = tuple([row.id for row in df_result.collect()])
+    assert rt.sample_orphan_pk_old == sample_orphan_pk
 
 
-def test_sample_pk_orphan_new(simple_df):
+def test_sample_orphan_pk_new(simple_df):
     df_old = simple_df
     df_new = simple_df.unionAll(simple_df)
     rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
-    sample_pk_orphan = tuple(
-        [
-            row.id
-            for row in df_new.join(df_old, how="left_anti", on=["id"])
-            .select(F.col("id"))
-            .distinct()
-            .collect()
-        ]
-    )
-    assert rt.sample_pk_orphan_new == sample_pk_orphan
+    df_result = df_new.join(df_old, how="left_anti", on=["id"]).select(F.col("id")).distinct()
+    sample_orphan_pk = tuple([row.id for row in df_result.collect()])
+    assert rt.sample_orphan_pk_new == sample_orphan_pk
 
 
-def test_count_record_comparable(simple_df):
+def test_count_comparable_record(simple_df):
     rt = RegressionTest(df_old=simple_df, df_new=simple_df, pk="id")
-    assert rt.count_record_comparable == simple_df.count()
+    assert rt.count_comparable_record == simple_df.count()
 
 
-def test_count_pk_comparable(simple_df):
+def test_count_comparable_pk(simple_df):
     rt = RegressionTest(df_old=simple_df, df_new=simple_df, pk="id")
-    assert rt.count_pk_comparable == simple_df.select(F.col("id")).distinct().count()
+    assert rt.count_comparable_pk == simple_df.select(F.col("id")).distinct().count()
 
 
 def test_diff(spark):
@@ -373,37 +309,10 @@ def test_diff(spark):
     df_old = spark.createDataFrame(
         [
             (1, None, True, None, None, None, None, None),  # NULL -> NULL (same)
-            (
-                2,
-                "a",
-                True,
-                1,
-                1.0,
-                1.00000,
-                date(2022, 1, 1),
-                datetime(2022, 1, 1, 12, 0, 0, 0),
-            ),  # NOT NULL -> NOT NULL (same)
-            (
-                3,
-                "a",
-                True,
-                1,
-                1.0,
-                1.00000,
-                date(2022, 1, 1),
-                datetime(2022, 1, 1, 12, 0, 0, 0),
-            ),  # NOT NULL -> NOT NULL (diff)
+            (2, "a", True, 1, 1.0, 1.00000, date(2022, 1, 1), datetime(2022, 1, 1, 12, 0, 0, 0)),  # NOT NULL -> NOT NULL (same)
+            (3, "a", True, 1, 1.0, 1.00000, date(2022, 1, 1), datetime(2022, 1, 1, 12, 0, 0, 0)),  # NOT NULL -> NOT NULL (diff)
             (4, None, True, None, None, None, None, None),  # NULL -> NOT NULL
-            (
-                5,
-                "a",
-                True,
-                1,
-                1.0,
-                1.00000,
-                date(2022, 1, 1),
-                datetime(2022, 1, 1, 12, 0, 0, 0),
-            ),  # NOT NULL -> NULL
+            (5, "a", True, 1, 1.0, 1.00000, date(2022, 1, 1), datetime(2022, 1, 1, 12, 0, 0, 0)),  # NOT NULL -> NULL
             (6, "  pad removed  ", None, None, None, None, None, None),  # pad removed
             (7, "pad added", None, None, None, None, None, None),  # pad added
             (8, "  lpad removed", None, None, None, None, None, None),  # lpad removed
@@ -419,26 +328,8 @@ def test_diff(spark):
             (18, "trunca", None, None, None, None, None, None),  # extended
             (19, None, None, None, None, 1.0000, None, None),  # rounding
             (20, None, None, None, None, 1.0001, None, None),  # rounding
-            (
-                21,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                datetime(2022, 1, 1, 12, 0, 0, 0),
-            ),  # hour shift
-            (
-                22,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                datetime(2022, 1, 1, 15, 0, 0, 0),
-            ),  # hour shift
+            (21, None, None, None, None, None, None, datetime(2022, 1, 1, 12, 0, 0, 0)),  # hour shift
+            (22, None, None, None, None, None, None, datetime(2022, 1, 1, 15, 0, 0, 0)),  # hour shift
         ],
         schema=schema,
     )
@@ -446,36 +337,9 @@ def test_diff(spark):
     df_new = spark.createDataFrame(
         [
             (1, None, True, None, None, None, None, None),  # NULL -> NULL (same)
-            (
-                2,
-                "a",
-                True,
-                1,
-                1.0,
-                1.00000,
-                date(2022, 1, 1),
-                datetime(2022, 1, 1, 12, 0, 0, 0),
-            ),  # NOT NULL -> NOT NULL (same)
-            (
-                3,
-                "b",
-                False,
-                2,
-                2.0,
-                2.00000,
-                date(2022, 1, 2),
-                datetime(2022, 1, 2, 12, 0, 0, 0),
-            ),  # NOT NULL -> NOT NULL (diff), boolean flip
-            (
-                4,
-                "a",
-                True,
-                1,
-                1.0,
-                1.00000,
-                date(2022, 1, 1),
-                datetime(2022, 1, 1, 12, 0, 0, 0),
-            ),  # NULL -> NOT NULL
+            (2, "a", True, 1, 1.0, 1.00000, date(2022, 1, 1), datetime(2022, 1, 1, 12, 0, 0, 0)),  # NOT NULL -> NOT NULL (same)
+            (3, "b", False, 2, 2.0, 2.00000, date(2022, 1, 2), datetime(2022, 1, 2, 12, 0, 0, 0)),  # NOT NULL -> NOT NULL (diff), boolean flip
+            (4, "a", True, 1, 1.0, 1.00000, date(2022, 1, 1), datetime(2022, 1, 1, 12, 0, 0, 0)),  # NULL -> NOT NULL
             (5, None, True, None, None, None, None, None),  # NOT NULL -> NULL
             (6, "pad removed", None, None, None, None, None, None),  # pad removed
             (7, "  pad added  ", None, None, None, None, None, None),  # pad added
@@ -492,26 +356,8 @@ def test_diff(spark):
             (18, "truncation removed", None, None, None, None, None, None),  # extended
             (19, None, None, None, None, 1.0001, None, None),  # rounding
             (20, None, None, None, None, 1.0000, None, None),  # rounding
-            (
-                21,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                datetime(2022, 1, 1, 15, 0, 0, 0),
-            ),  # hour shift
-            (
-                22,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                datetime(2022, 1, 1, 12, 0, 0, 0),
-            ),  # hour shift
+            (21, None, None, None, None, None, None, datetime(2022, 1, 1, 15, 0, 0, 0)),  # hour shift
+            (22, None, None, None, None, None, None, datetime(2022, 1, 1, 12, 0, 0, 0)),  # hour shift
         ],
         schema=schema,
     )
@@ -523,24 +369,19 @@ def test_diff(spark):
         table_name="test_diff",
     )
 
-    assert rt.count_record_comparable == 22
-    assert rt.count_pk_comparable == 22
-    assert rt.count_record_diff == 20
-    assert rt.count_pk_diff == 20
-    assert rt.success is False  # Diffs constitute a failure
+    assert rt.count_comparable_record == 22
+    assert rt.count_comparable_pk == 22
+    assert rt.count_diff_record == 20
+    assert rt.count_diff_pk == 20
+    assert not rt.is_success
     assert (
         tabulate(
-            rt.df_diff.orderBy(
-                F.col("pk").cast(IntegerType()),
-                F.col("diff_category"),
-                F.col("column_name"),
-            ).toPandas(),
+            rt.df_diff.orderBy(F.col("pk").cast(IntegerType()), F.col("diff_category"), F.col("column_name")).toPandas(),
             headers="keys",
             missingval="NULL",
             tablefmt="pipe",
             showindex=False,
-        )
-        == """\
+        ) == """\
 | column_name    | data_type   |   pk | old_value           | new_value            | diff_category                    |
 |:---------------|:------------|-----:|:--------------------|:---------------------|:---------------------------------|
 | attr_bool      | boolean     |    3 | true                | false                | boolean flip (true -> false)     |

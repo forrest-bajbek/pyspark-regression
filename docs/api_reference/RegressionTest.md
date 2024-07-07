@@ -1,15 +1,11 @@
-# RegressionTest
+# RegressionTestResult
 
-The `RegressionTest` class is the main tool of this library. It is a dataclass that, given a few parameters, has a number of immutable methods (decorated as cached properties) that can be used to programmatically inspect the difference between two dataframes.
+`RegressionTestResult` is a dataclass with methods for inspecting the difference between two dataframes.
 
-For an example of how to use this class, please see the [Overview](../index.md).
-
-::: pyspark_regression.regression.RegressionTest
+::: pyspark_regression.RegressionTest
     handler: python
     options:
       members:
-        - summary
-        - success
         - columns_old
         - columns_new
         - columns_all
@@ -29,21 +25,21 @@ For an example of how to use this class, please see the [Overview](../index.md).
         - count_record_new
         - count_pk_old
         - count_pk_new
-        - count_record_duplicate_old
-        - count_record_duplicate_new
-        - count_pk_duplicate_old
-        - count_pk_duplicate_new
+        - count_duplicate_record_old
+        - count_duplicate_record_new
+        - count_duplicate_pk_old
+        - count_duplicate_pk_new
         - has_symmetric_duplicates
-        - count_pk_orphan_old
-        - count_pk_orphan_new
-        - count_record_comparable
-        - count_pk_comparable
-        - count_record_diff
-        - count_pk_diff
-        - sample_pk_duplicate_old
-        - sample_pk_duplicate_new
-        - sample_pk_orphan_old
-        - sample_pk_orphan_new
+        - count_orphan_pk_old
+        - count_orphan_pk_new
+        - count_comparable_record
+        - count_comparable_pk
+        - count_diff_record
+        - count_diff_pk
+        - sample_duplicate_pk_old
+        - sample_duplicate_pk_new
+        - sample_orphan_pk_old
+        - sample_orphan_pk_new
         - df_duplicate_old
         - df_duplicate_new
         - df_orphan_old
@@ -54,6 +50,8 @@ For an example of how to use this class, please see the [Overview](../index.md).
         - df_diff
         - df_diff_summary
         - df_diff_sample
+        - is_success
+        - summary
       show_root_heading: true
       show_source: true
 
