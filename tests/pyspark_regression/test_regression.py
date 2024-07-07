@@ -6,7 +6,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.types import BooleanType, DateType, DoubleType, FloatType, IntegerType, StringType, StructField, StructType, TimestampType
 from tabulate import tabulate
 
-from pyspark_regression import SchemaMutation, RegressionTest
+from pyspark_regression import RegressionTest, SchemaMutation
 
 
 @pytest.fixture(scope="session")
@@ -381,7 +381,8 @@ def test_diff(spark):
             missingval="NULL",
             tablefmt="pipe",
             showindex=False,
-        ) == """\
+        )
+        == """\
 | column_name    | data_type   |   pk | old_value           | new_value            | diff_category                    |
 |:---------------|:------------|-----:|:--------------------|:---------------------|:---------------------------------|
 | attr_bool      | boolean     |    3 | true                | false                | boolean flip (true -> false)     |

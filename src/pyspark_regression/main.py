@@ -8,9 +8,8 @@ from uuid import uuid4
 from pyspark.sql import SparkSession, Window, functions as F
 from pyspark.sql.column import Column
 from pyspark.sql.dataframe import DataFrame
-from pyspark.sql.types import LongType, StringType, StructField, StructType
+from pyspark.sql.types import LongType, StringType
 from tabulate import tabulate
-
 
 spark = SparkSession.builder.getOrCreate()
 
@@ -28,7 +27,6 @@ class SchemaMutation:
 
 
 class RegressionTest:
-
     def __init__(
         self,
         df_old: DataFrame,
@@ -38,7 +36,6 @@ class RegressionTest:
         table_name: str = "df",
         num_samples: int = 5,
         sort_samples: bool = False,
-
     ):
         """A class with methods for regression testing between two DataFrames.
 
@@ -299,12 +296,7 @@ class RegressionTest:
     # ---------------------------------------------------------------------------------
     @staticmethod
     def _df_orphan(df: DataFrame, df_anti: DataFrame, sort_samples: bool) -> DataFrame:
-        df_results = (
-            df
-            .join(df_anti, how="left_anti", on=["pk"])
-            .select(F.col("pk"))
-            .distinct()
-        )
+        df_results = df.join(df_anti, how="left_anti", on=["pk"]).select(F.col("pk")).distinct()
         if sort_samples:
             return df_results.orderBy(F.col("pk"))
         return df_results
@@ -413,15 +405,13 @@ class RegressionTest:
         for c in self.columns_comparable:
             oc = "old_" + c
             nc = "new_" + c
-            case_sql.append(f"CASE WHEN ((`{oc}` != `{nc}`) OR (`{oc}` IS NULL AND `{nc}` IS NOT NULL) OR (`{oc}` IS NOT NULL AND `{nc}` IS NULL)) THEN '{c}' ELSE NULL END")
+            case_sql.append(
+                f"CASE WHEN ((`{oc}` != `{nc}`) OR (`{oc}` IS NULL AND `{nc}` IS NOT NULL) OR (`{oc}` IS NOT NULL AND `{nc}` IS NULL)) THEN '{c}' ELSE NULL END"
+            )
             where_sql.append(f"((`{oc}` != `{nc}`) OR (`{oc}` IS NULL AND `{nc}` IS NOT NULL) OR (`{oc}` IS NOT NULL AND `{nc}` IS NULL))")
         case_expr = f"SPLIT(CONCAT_WS(',', {','.join(case_sql)}), ',')"
         where_expr = " OR ".join(where_sql)
-        df_regression = (
-            self.df_comparable
-            .filter(F.expr(where_expr))
-            .withColumn("diff_cols", F.expr(case_expr))
-        )
+        df_regression = self.df_comparable.filter(F.expr(where_expr)).withColumn("diff_cols", F.expr(case_expr))
         self._df_cache["df_regression"] = df_regression.checkpoint(eager=False)
         return df_regression
 
@@ -499,9 +489,7 @@ class RegressionTest:
             )
         elif data_type == "boolean":
             col_diff_category = (
-                F.when(old_col & ~new_col, "boolean flip (true -> false)")
-                .when(new_col & ~old_col, "boolean flip (false -> true)")
-                .otherwise(col_default)
+                F.when(old_col & ~new_col, "boolean flip (true -> false)").when(new_col & ~old_col, "boolean flip (false -> true)").otherwise(col_default)
             )
         else:
             col_diff_category = col_default
@@ -529,17 +517,13 @@ class RegressionTest:
         schema = self.df_old.schema
         for col in self.columns_diff:
             data_type = schema[col].dataType.typeName()
-            df = (
-                self.df_regression
-                .filter(F.array_contains(F.col("diff_cols"), F.lit(col)))
-                .select(
-                    F.lit(col).alias("column_name"),
-                    F.lit(data_type).alias("data_type"),
-                    F.col("pk").alias("pk"),
-                    self._quote_if_string(col=F.col(f"old_{col}"), data_type=data_type).alias("old_value"),
-                    self._quote_if_string(col=F.col(f"new_{col}"), data_type=data_type).alias("new_value"),
-                    self._col_diff_category(old_col=F.col(f"old_{col}"), new_col=F.col(f"new_{col}"), data_type=data_type).alias("diff_category"),
-                )
+            df = self.df_regression.filter(F.array_contains(F.col("diff_cols"), F.lit(col))).select(
+                F.lit(col).alias("column_name"),
+                F.lit(data_type).alias("data_type"),
+                F.col("pk").alias("pk"),
+                self._quote_if_string(col=F.col(f"old_{col}"), data_type=data_type).alias("old_value"),
+                self._quote_if_string(col=F.col(f"new_{col}"), data_type=data_type).alias("new_value"),
+                self._col_diff_category(old_col=F.col(f"old_{col}"), new_col=F.col(f"new_{col}"), data_type=data_type).alias("diff_category"),
             )
             df.checkpoint(eager=False)
             dfs.append(df)
@@ -556,8 +540,7 @@ class RegressionTest:
             return df_cache
 
         df_diff_summary = (
-            self.df_diff
-            .groupBy(F.col("column_name"), F.col("data_type"), F.col("diff_category"))
+            self.df_diff.groupBy(F.col("column_name"), F.col("data_type"), F.col("diff_category"))
             .agg(F.count("pk").alias("count_record"))
             .orderBy(F.col("column_name"), F.col("diff_category"))
             .withColumn(
@@ -580,14 +563,9 @@ class RegressionTest:
             return df_cache
 
         df_diff_sample = (
-            self.df_diff
-            .withColumn(
+            self.df_diff.withColumn(
                 "rn",
-                F.row_number().over(
-                    Window
-                    .partitionBy([F.col("column_name"), F.col("diff_category")])
-                    .orderBy(F.col("pk"))
-                ),
+                F.row_number().over(Window.partitionBy([F.col("column_name"), F.col("diff_category")]).orderBy(F.col("pk"))),
             )
             .filter(F.col("rn") <= F.lit(self.num_samples))
             .drop("rn")
@@ -678,10 +656,18 @@ class RegressionTest:
 
         if self.count_duplicate_record_old or self.count_duplicate_record_new:
             summary.append("\n### Duplicates")
-            summary.append(f"- Count of duplicate records in old {self.table_name}: {self.count_duplicate_record_old} (%oT: {(self.count_duplicate_record_old / self.count_record_old):.1%})")  # noqa: E501
-            summary.append(f"- Count of duplicate records in new {self.table_name}: {self.count_duplicate_record_new} (%oT: {(self.count_duplicate_record_new / self.count_record_new):.1%})")  # noqa: E501
-            summary.append(f"- Count of duplicate pks in old {self.table_name}: {self.count_duplicate_pk_old} (%oT: {(self.count_duplicate_pk_old / self.count_pk_old):.1%})")  # noqa: E501
-            summary.append(f"- Count of duplicate pks in new {self.table_name}: {self.count_duplicate_pk_new} (%oT: {(self.count_duplicate_pk_new / self.count_pk_new):.1%})")  # noqa: E501
+            summary.append(
+                f"- Count of duplicate records in old {self.table_name}: {self.count_duplicate_record_old} (%oT: {(self.count_duplicate_record_old / self.count_record_old):.1%})"
+            )  # noqa: E501
+            summary.append(
+                f"- Count of duplicate records in new {self.table_name}: {self.count_duplicate_record_new} (%oT: {(self.count_duplicate_record_new / self.count_record_new):.1%})"
+            )  # noqa: E501
+            summary.append(
+                f"- Count of duplicate pks in old {self.table_name}: {self.count_duplicate_pk_old} (%oT: {(self.count_duplicate_pk_old / self.count_pk_old):.1%})"
+            )  # noqa: E501
+            summary.append(
+                f"- Count of duplicate pks in new {self.table_name}: {self.count_duplicate_pk_new} (%oT: {(self.count_duplicate_pk_new / self.count_pk_new):.1%})"
+            )  # noqa: E501
             summary.append(f"- Sample of duplicate pks in old {self.table_name}: {[str(sample) for sample in self.sample_duplicate_pk_old]}")
             summary.append(f"- Sample of duplicate pks in new {self.table_name}: {[str(sample) for sample in self.sample_duplicate_pk_new]}")
             if self.has_symmetric_duplicates:
@@ -689,8 +675,12 @@ class RegressionTest:
 
         if self.count_orphan_pk_old or self.count_orphan_pk_new:
             summary.append("\n### Orphans")
-            summary.append(f"- Count of orphan pks in old {self.table_name}: {self.count_orphan_pk_old} (%oT: {(self.count_orphan_pk_old / self.count_pk_old):.1%})")  # noqa: E501
-            summary.append(f"- Count of orphan pks in new {self.table_name}: {self.count_orphan_pk_new} (%oT: {(self.count_orphan_pk_new / self.count_pk_new):.1%})")  # noqa: E501
+            summary.append(
+                f"- Count of orphan pks in old {self.table_name}: {self.count_orphan_pk_old} (%oT: {(self.count_orphan_pk_old / self.count_pk_old):.1%})"
+            )  # noqa: E501
+            summary.append(
+                f"- Count of orphan pks in new {self.table_name}: {self.count_orphan_pk_new} (%oT: {(self.count_orphan_pk_new / self.count_pk_new):.1%})"
+            )  # noqa: E501
             summary.append(f"- Sample of orphan pks in old {self.table_name}: {[str(sample) for sample in self.sample_orphan_pk_old]}")
             summary.append(f"- Sample of orphan pks in new {self.table_name}: {[str(sample) for sample in self.sample_orphan_pk_new]}")
 
