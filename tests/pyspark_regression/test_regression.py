@@ -387,9 +387,9 @@ def test_diff(spark):
 |:---------------|:------------|-----:|:--------------------|:---------------------|:---------------------------------|
 | attr_bool      | boolean     |    3 | true                | false                | boolean flip (true -> false)     |
 | attr_timestamp | timestamp   |    3 | 2022-01-01 12:00:00 | 2022-01-02 12:00:00  | hour shift                       |
+| attr_double    | double      |    3 | 1.0                 | 2.0                  | multiple                         |
+| attr_float     | float       |    3 | 1.0                 | 2.0                  | multiple                         |
 | attr_date      | date        |    3 | 2022-01-01          | 2022-01-02           | uncategorized                    |
-| attr_double    | double      |    3 | 1.0                 | 2.0                  | uncategorized                    |
-| attr_float     | float       |    3 | 1.0                 | 2.0                  | uncategorized                    |
 | attr_int       | integer     |    3 | 1                   | 2                    | uncategorized                    |
 | attr_str       | string      |    3 | 'a'                 | 'b'                  | uncategorized                    |
 | attr_date      | date        |    4 | NULL                | 2022-01-01           | null flip (null -> not null)     |
