@@ -1,15 +1,14 @@
 # pyspark-regression
-A tool for regression testing Spark Dataframes in Python.
 
-`pyspark-regression` is a tool for regression testing Spark Dataframes in Python.
+`pyspark-regression` is a concise, no-nonsense library for regression testing between PySpark Dataframes.
 
 For install instructions and API documentation, please visit https://forrest-bajbek.github.io/pyspark-regression/
 
 
 ## What is a Regression Test?
-A [Regression Test](https://en.wikipedia.org/wiki/Regression_testing) ensures that changes to code only produce expected outcomes, introducing no _new_ bugs. These tests are particularly challenging when working with database tables, as the result can be too large to visually inspect. When updating a SQL transformation, Data Engineers must ensure that no rows or columns were unintentionally altered, even if the table has 300 columns and 400 billion rows.
+A [Regression Test](https://en.wikipedia.org/wiki/Regression_testing) ensures that changes to code only produce expected outcomes, introducing no _new_ bugs. These tests are particularly challenging when working with database tables, as the result can be too large to visually inspect. When updating a SQL transformation, Data Engineers must ensure that no rows or columns were unintentionally altered, even if the table has hundreds columns and billions of rows.
 
-`pyspark-regression` reduces the complexity of Regression Testing for structured database tables. It standardizes the concepts and jargon associated with this topic, and implements a clean Python API for running regression tests against DataFrames in [Apache Spark](https://spark.apache.org/).
+`pyspark-regression` reduces the complexity of Regression Testing by implementing a clean Python API for running regression tests between DataFrames in [Apache Spark](https://spark.apache.org/).
 
 ## Example
 Consider the following table:
@@ -80,8 +79,10 @@ regression_test = RegressionTest(
 ```
 
 
-`RegressionTest()` returns a Python dataclass with lots of methods that help you inspect how the two dataframes are different. Most notably, the `summary` method prints a comprehensive analysis in Markdown. Here's what happens when you run `print(regression_test.summary)`:
-```
+`RegressionTest()` returns a Python class with properties that let you inspect the differences between dataframes. Most notably, the `summary` property prints a comprehensive analysis in Markdown.
+```markdown
+>>> print(regression_test.summary)
+
 # Regression Test: df
 - run_id: de9bd4eb-5313-4057-badc-7322ee23b83b
 - run_time: 2022-05-25 08:53:50.581283
@@ -129,10 +130,4 @@ The `RegressionTest` class provides low level access to all the methods used to 
 +-----------+---------+---+---------+---------+-------------+
 |      price|   double|  1|    3.001|      3.0|     rounding|
 +-----------+---------+---+---------+---------+-------------+
-```
-
-This example is accessable from the module:
-```python
-from pyspark_regression.example import regression_test
-print(regression_test.summary)
 ```

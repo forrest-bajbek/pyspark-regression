@@ -76,8 +76,9 @@ regression_test = RegressionTest(
 ```
 
 
-`RegressionTest()` returns a Python dataclass with lots of methods that help you inspect how the two dataframes are different. Most notably, the `summary` method prints a comprehensive analysis in Markdown. Here's what happens when you run `print(regression_test.summary)`:
-```
+`RegressionTest()` returns a Python class with properties that let you inspect the differences between dataframes. Most notably, the `summary` property prints a comprehensive analysis in Markdown.
+```markdown
+>>> print(regression_test.summary)
 # Regression Test: df
 - run_id: de9bd4eb-5313-4057-badc-7322ee23b83b
 - run_time: 2022-05-25 08:53:50.581283
