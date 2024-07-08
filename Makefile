@@ -20,3 +20,6 @@ deploy-dev: build
 
 deploy: build
 	python -m twine upload dist/*
+
+deploy-docs:
+	mkdocs gh-deploy
