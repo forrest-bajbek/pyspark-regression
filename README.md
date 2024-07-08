@@ -38,7 +38,7 @@ Let's create the old and new tables as dataframes so we can run a Regression Tes
 ```python
 from pyspark.sql import SparkSession
 from pyspark.sql.types import *
-from pyspark_regression.regression import RegressionTest
+from pyspark_regression import RegressionTest
 
 spark = SparkSession.builder.getOrCreate()
 spark.conf.set("spark.sql.shuffle.partitions", 1)
