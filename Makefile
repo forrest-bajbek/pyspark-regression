@@ -1,12 +1,15 @@
 init:
-	brew install apache-spark@3.3.1
-	pip install -e .[dev]
+	brew install apache-spark \
+	&& rm -rf venv
+	&& python -m venv venv
+	&& source venv/bin/activate
+	&& pip install -e ".[dev]"
 
-test-cov: init
-	python -m pytest --cov-config=.coveragec --cov=src
-
-test: init
+test:
 	python -m pytest
+
+test-cov:
+	python -m pytest --cov-config=.coveragec --cov=src
 
 build: test
 	rm -rf dist
@@ -17,9 +20,3 @@ deploy-dev: build
 
 deploy: build
 	python -m twine upload dist/*
-
-docker-build:
-	docker build -t pyspark-regression:1.1.1 .
-
-docker-test: docker-build
-	docker run -it --rm --entrypoint /bin/sh pyspark-regression:1.1.1 -c "python3 -m pytest"

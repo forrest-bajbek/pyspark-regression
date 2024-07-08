@@ -1,5 +1,7 @@
 ## SchemaMutation
 
+`SchemaMutation` is a dataclass with attributes for inspecting schema mutations.
+
 ::: pyspark_regression.regression.SchemaMutation
     handler: python
     options:
