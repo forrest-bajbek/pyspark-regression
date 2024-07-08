@@ -65,26 +65,55 @@ class RegressionTest:
         if "pk" in df_new.columns:
             raise KeyError("The column name 'pk' itself is reserved. Please remove it from df_new.")
 
-        self.df_old = df_old.withColumn("pk", F.col(pk))
-        "Old Spark DataFrame"
-        self.df_new = df_new.withColumn("pk", F.col(pk))
-        "New Spark DataFrame"
-        self.pk = pk
-        "Primary key shared between df_old and df_new"
-        self.table_name = table_name
-        "Name of table"
-        self.num_samples = num_samples
-        "Number of samples to return in sample fields"
-        self.sort_samples = sort_samples
-        "If True, will sort DataFrames before retrieving samples. Ensures that samples are idempotent, but reduces performance."
-
-        self.run_id = str(uuid4())
-        "The regression test's unique identifier"
+        self._df_old = df_old.withColumn("pk", F.col(pk))
+        self._df_new = df_new.withColumn("pk", F.col(pk))
+        self._pk = pk
+        self._table_name = table_name
+        self._num_samples = num_samples
+        self._sort_samples = sort_samples
+        self._run_id = str(uuid4())
 
         p = Path(f"/tmp/pyspark-regression/{self.run_id}")
         p.parent.mkdir(exist_ok=True)
         spark.sparkContext.setCheckpointDir(p.as_posix())
         self._df_cache: dict[str, DataFrame] = dict()
+
+    # Make attributes read-only
+    # ---------------------------------------------------------------------------------
+    @property
+    def df_old(self) -> DataFrame:
+        "Old Spark DataFrame"
+        return self._df_old
+
+    @property
+    def df_new(self) -> DataFrame:
+        "New Spark DataFrame"
+        return self._df_new
+
+    @property
+    def pk(self) -> str | Column:
+        "Primary key shared between df_old and df_new"
+        return self._pk
+
+    @property
+    def table_name(self) -> str:
+        "Name of table"
+        return self._table_name
+
+    @property
+    def num_samples(self) -> int:
+        "Number of samples to return in sample fields"
+        return self._num_samples
+
+    @property
+    def sort_samples(self) -> bool:
+        "If True, will sort DataFrames before retrieving samples. Ensures that samples are idempotent, but reduces performance."
+        return self._sort_samples
+
+    @property
+    def run_id(self) -> str:
+        "The regression test's unique identifier"
+        return self._run_id
 
     # Metadata
     # ---------------------------------------------------------------------------------
