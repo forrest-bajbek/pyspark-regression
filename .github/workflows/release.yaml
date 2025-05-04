@@ -28,6 +28,10 @@ jobs:
           pip install build
           python -m build
       - name: Upload to PyPI
+        environment:
+          TWINE_REPOSITORY: ${{ vars.TWINE_REPOSITORY }}
+          TWINE_USERNAME: ${{ vars.TWINE_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
         run: |
           pip install twine
           twine upload dist/*
