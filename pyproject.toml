@@ -49,6 +49,7 @@ dev = [
     "isort",
     "mkdocs-material",
     "mkdocstrings-python",
+    "pre-commit",
     "pytest-cov",
     "pytest",
     "setuptools",

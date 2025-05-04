@@ -14,7 +14,7 @@ from pyspark.sql.types import (
     StructType,
     TimestampType,
 )
-from tabulate import tabulate
+from tabulate import tabulate  # type: ignore [import-untyped]
 
 from pyspark_regression import RegressionTest, SchemaMutation
 
