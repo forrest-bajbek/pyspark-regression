@@ -21,13 +21,7 @@ from pyspark_regression import RegressionTest, SchemaMutation
 
 @pytest.fixture(scope="session")
 def spark():
-    return (
-        SparkSession
-        .builder
-        .config("spark.sql.shuffle.partitions", "1")
-        .config("spark.sql.analyzer.failAmbiguousSelfJoin", False)
-        .getOrCreate()
-    )
+    return SparkSession.builder.config("spark.sql.shuffle.partitions", "1").config("spark.sql.analyzer.failAmbiguousSelfJoin", False).getOrCreate()
 
 
 @pytest.fixture(scope="session")
@@ -373,7 +367,8 @@ def test_diff(spark):
         schema=schema,
     )
 
-    rt = RegressionTest(spark=spark,
+    rt = RegressionTest(
+        spark=spark,
         df_old=df_old,
         df_new=df_new,
         pk="id",

@@ -25,21 +25,20 @@
         - count_record_new
         - count_pk_old
         - count_pk_new
-        - count_duplicate_record_old
-        - count_duplicate_record_new
-        - count_duplicate_pk_old
-        - count_duplicate_pk_new
+        - count_record_duplicate_old
+        - count_record_duplicate_new
+        - count_pk_duplicate_old
+        - count_pk_duplicate_new
         - has_symmetric_duplicates
-        - count_orphan_pk_old
-        - count_orphan_pk_new
-        - count_comparable_record
-        - count_comparable_pk
-        - count_diff_record
-        - count_diff_pk
-        - sample_duplicate_pk_old
-        - sample_duplicate_pk_new
-        - sample_orphan_pk_old
-        - sample_orphan_pk_new
+        - count_pk_orphan_old
+        - count_pk_orphan_new
+        - count_pk_comparable
+        - count_record_diff
+        - count_pk_diff
+        - sample_pk_duplicate_old
+        - sample_pk_duplicate_new
+        - sample_pk_orphan_old
+        - sample_pk_orphan_new
         - df_duplicate_old
         - df_duplicate_new
         - df_orphan_old
@@ -50,8 +49,7 @@
         - df_diff
         - df_diff_summary
         - df_diff_sample
-        - is_success
+        - success
         - summary
       show_root_heading: true
       show_source: true
-
