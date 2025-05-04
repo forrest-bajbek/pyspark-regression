@@ -7,21 +7,17 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    environment:
-      name: ${{ github.ref_name }}
-
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
+      - name: Checkout branch
+        uses: actions/checkout@v4
+      - name: Install Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
-      - name: update pip
+      - name: Update pip
         run: |
           pip install --upgrade pip
-
-      - name: run pre-commit
+      - name: Run pre-commit
         run: |
           pip install pre-commit
           pre-commit run --all
