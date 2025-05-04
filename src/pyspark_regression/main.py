@@ -127,17 +127,17 @@ class RegressionTest:
         return schema_mutations
 
     @cached_property
-    def schema_mutations_type(self) -> Set[str]:
+    def schema_mutations_type(self) -> Set[SchemaMutation]:
         "Detail for schema mutations of 'data_type' attribute"
         return set([sm for sm in self.schema_mutations if sm.attribute == "type"])
 
     @cached_property
-    def schema_mutations_nullable(self) -> Set[str]:
+    def schema_mutations_nullable(self) -> Set[SchemaMutation]:
         "Detail for schema mutations of 'nullable' attribute"
         return set([sm for sm in self.schema_mutations if sm.attribute == "nullable"])
 
     @cached_property
-    def schema_mutations_metadata(self) -> Set[str]:
+    def schema_mutations_metadata(self) -> Set[SchemaMutation]:
         "Detail for schema mutations of 'metadata' attribute"
         return set([sm for sm in self.schema_mutations if sm.attribute == "metadata"])
 
@@ -539,7 +539,7 @@ class RegressionTest:
         A string-based report that summarizes the results of the Regression Test in Markdown.
         """
         timer_start = perf_counter()
-        report: List[str] = list()
+        report: List[str] = []
 
         if self.success:
             report.append(f"# {self.table_name}: SUCCESS")
@@ -630,10 +630,10 @@ class RegressionTest:
                 f"- Columns with diffs: {self.columns_diff}",
                 f"- Pks with diffs: {self.count_pk_diff} (%oT: {(self.count_pk_diff / self.count_pk_comparable):.1%})\n",
                 "Diff Summary:\n",
-                self.df_diff_summary.toPandas().to_markdown(index=False),
+                self.df_diff_summary.toPandas().to_markdown(index=False),  # type: ignore [attr-defined]
                 "\n",
                 "Diff Samples: (5 samples per column_name, per diff_category, per is_duplicate)\n",
-                self.df_diff_sample.toPandas().to_markdown(index=False),
+                self.df_diff_sample.toPandas().to_markdown(index=False),  # type: ignore [attr-defined]
             ]
 
         timer_stop = perf_counter()
