@@ -69,6 +69,7 @@ df_new = spark.createDataFrame(
 )
 
 regression_test = RegressionTest(
+    spark=spark,
     df_old=df_old,
     df_new=df_new,
     pk='id',
@@ -76,15 +77,12 @@ regression_test = RegressionTest(
 ```
 
 
-`RegressionTest()` returns a Python class with properties that let you inspect the differences between dataframes. Most notably, the `summary` property prints a comprehensive analysis in Markdown.
+`RegressionTest()` returns a Python class with properties that let you inspect the differences between dataframes. Most notably, the `summary` property prints a comprehensive analysis in Markdown:
 ```markdown
 >>> print(regression_test.summary)
-# Regression Test: df
-- run_id: de9bd4eb-5313-4057-badc-7322ee23b83b
-- run_time: 2022-05-25 08:53:50.581283
-
-## Result: **FAILURE**.
-Printing Regression Report...
+# df: FAILURE
+- run_id: e2025276-aeed-4155-8162-ee1027373389
+- run_time: 2025-05-04 09:42:59.273084
 
 ### Table stats
 - Count records in old df: 3
@@ -94,15 +92,18 @@ Printing Regression Report...
 
 ### Diffs
 - Columns with diffs: {'name', 'price'}
-- Number of records with diffs: 2 (%oT: 66.7%)
+- Pks with diffs: 2 (%oT: 66.7%)
 
- Diff Summary:
-| column_name   | data_type   | diff_category        |   count_record | count_record_%oT   |
-|:--------------|:------------|:---------------------|---------------:|:-------------------|
-| name          | string      | capitalization added |              1 | 33.3%              |
-| price         | double      | rounding             |              1 | 33.3%              |
+Diff Summary:
 
- Diff Samples: (5 samples per column_name, per diff_category, per is_duplicate)
+| column_name   | data_type   | diff_category        |   count_record |   count_pk | count_pk_%oT   |
+|:--------------|:------------|:---------------------|---------------:|-----------:|:---------------|
+| name          | string      | capitalization added |              1 |          1 | 33.3%          |
+| price         | double      | rounding             |              1 |          1 | 33.3%          |
+
+
+Diff Samples: (5 samples per column_name, per diff_category, per is_duplicate)
+
 | column_name   | data_type   |   pk | old_value   | new_value   | diff_category        |
 |:--------------|:------------|-----:|:------------|:------------|:---------------------|
 | name          | string      |    3 | 'flauta'    | 'Flauta'    | capitalization added |
@@ -126,10 +127,4 @@ The `RegressionTest` class provides low level access to all the methods used to 
 +-----------+---------+---+---------+---------+-------------+
 |      price|   double|  1|    3.001|      3.0|     rounding|
 +-----------+---------+---+---------+---------+-------------+
-```
-
-This example is accessable from the module:
-```python
-from pyspark_regression.example import regression_test
-print(regression_test.summary)
 ```
