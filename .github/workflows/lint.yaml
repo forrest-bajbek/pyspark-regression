@@ -1,0 +1,27 @@
+name: lint
+on:
+  pull_request:
+    branches: ['main']
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref_name }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: update pip
+        run: |
+          pip install --upgrade pip
+
+      - name: run pre-commit
+        run: |
+          pip install pre-commit
+          pre-commit run --all

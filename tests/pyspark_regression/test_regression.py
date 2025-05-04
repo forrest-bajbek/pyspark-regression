@@ -3,15 +3,25 @@ from datetime import date, datetime
 import pyspark.sql.functions as F
 import pytest
 from pyspark.sql import SparkSession
-from pyspark.sql.types import BooleanType, DateType, DoubleType, FloatType, IntegerType, StringType, StructField, StructType, TimestampType
-from tabulate import tabulate
+from pyspark.sql.types import (
+    BooleanType,
+    DateType,
+    DoubleType,
+    FloatType,
+    IntegerType,
+    StringType,
+    StructField,
+    StructType,
+    TimestampType,
+)
+from tabulate import tabulate  # type: ignore [import-untyped]
 
 from pyspark_regression import RegressionTest, SchemaMutation
 
 
 @pytest.fixture(scope="session")
 def spark():
-    return SparkSession.builder.config("spark.sql.shuffle.partitions", "1").getOrCreate()
+    return SparkSession.builder.config("spark.sql.shuffle.partitions", "1").config("spark.sql.analyzer.failAmbiguousSelfJoin", False).getOrCreate()
 
 
 @pytest.fixture(scope="session")
@@ -42,66 +52,66 @@ def simple_df(spark, simple_schema):
     )
 
 
-def test_post_init_pk_exists(empty_df):
+def test_post_init_pk_exists(spark, empty_df):
     """
     If pk doesn't exist in either df_old or df_new, an error should be raised.
     """
     df_old = empty_df
     df_new = empty_df
     with pytest.raises(KeyError):
-        RegressionTest(df_old=df_old, df_new=df_new, pk="wrong_key")
+        RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="wrong_key")
 
 
-def test_post_init_pk_reserved(empty_df):
+def test_post_init_pk_reserved(spark, empty_df):
     """
     If 'pk' itself is passed for pk, an error should be raised.
     """
     df_old = empty_df
     df_new = empty_df
     with pytest.raises(KeyError):
-        RegressionTest(df_old=df_old, df_new=df_new, pk="pk")
+        RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="pk")
 
 
-def test_columns_old(empty_df):
-    rt = RegressionTest(df_old=empty_df, df_new=empty_df, pk="id")
+def test_columns_old(spark, empty_df):
+    rt = RegressionTest(spark=spark, df_old=empty_df, df_new=empty_df, pk="id")
     assert rt.columns_old == set(empty_df.columns)
 
 
-def test_columns_new(empty_df):
-    rt = RegressionTest(df_old=empty_df, df_new=empty_df, pk="id")
+def test_columns_new(spark, empty_df):
+    rt = RegressionTest(spark=spark, df_old=empty_df, df_new=empty_df, pk="id")
     assert rt.columns_new == set(empty_df.columns)
 
 
-def test_columns_all(empty_df):
+def test_columns_all(spark, empty_df):
     df_old = empty_df.withColumn("attr_3", F.lit(None))
     df_new = empty_df.withColumn("attr_4", F.lit(None))
-    rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
+    rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     assert rt.columns_all == set(empty_df.columns + ["attr_3", "attr_4"])
 
 
-def test_columns_added(empty_df):
+def test_columns_added(spark, empty_df):
     df_old = empty_df
     df_new = empty_df.withColumn("attr_3", F.lit(None))
-    rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
+    rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     assert rt.columns_added == set(["attr_3"])
 
 
-def test_columns_removed(empty_df):
+def test_columns_removed(spark, empty_df):
     df_old = empty_df.withColumn("attr_3", F.lit(None))
     df_new = empty_df
-    rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
+    rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     assert rt.columns_removed == set(["attr_3"])
 
 
-def test_columns_kept(empty_df):
-    rt = RegressionTest(df_old=empty_df, df_new=empty_df, pk="id")
+def test_columns_kept(spark, empty_df):
+    rt = RegressionTest(spark=spark, df_old=empty_df, df_new=empty_df, pk="id")
     assert rt.columns_kept == set(empty_df.columns)
 
 
-def test_schema_mutations_type(empty_df):
+def test_schema_mutations_type(spark, empty_df):
     df_old = empty_df.withColumn("attr_3", F.lit(None).cast(DateType()))
     df_new = empty_df.withColumn("attr_3", F.lit(None).cast(TimestampType()))
-    rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
+    rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     assert rt.schema_mutations_type == set(
         [
             SchemaMutation(
@@ -114,44 +124,44 @@ def test_schema_mutations_type(empty_df):
     )
 
 
-def test_columns_changed_type(empty_df):
+def test_columns_changed_type(spark, empty_df):
     df_old = empty_df.withColumn("attr_3", F.lit(None).cast(DateType()))
     df_new = empty_df.withColumn("attr_3", F.lit(None).cast(TimestampType()))
-    rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
+    rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     assert rt.columns_changed_type == set(["attr_3"])
 
 
-def test_columns_comparable(empty_df):
+def test_columns_comparable(spark, empty_df):
     df_old = empty_df.withColumn("attr_3", F.lit(None).cast(DateType()))
     df_new = empty_df.withColumn("attr_3", F.lit(None).cast(TimestampType()))
-    rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
+    rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     assert rt.columns_comparable == set(empty_df.columns)
 
 
-def test_count_record_old(simple_df):
-    rt = RegressionTest(df_old=simple_df, df_new=simple_df, pk="id")
+def test_count_record_old(spark, simple_df):
+    rt = RegressionTest(spark=spark, df_old=simple_df, df_new=simple_df, pk="id")
     assert rt.count_record_old == simple_df.count()
 
 
-def test_count_record_new(simple_df):
-    rt = RegressionTest(df_old=simple_df, df_new=simple_df, pk="id")
+def test_count_record_new(spark, simple_df):
+    rt = RegressionTest(spark=spark, df_old=simple_df, df_new=simple_df, pk="id")
     assert rt.count_record_new == simple_df.count()
 
 
-def test_count_pk_old(simple_df):
-    rt = RegressionTest(df_old=simple_df, df_new=simple_df, pk="id")
+def test_count_pk_old(spark, simple_df):
+    rt = RegressionTest(spark=spark, df_old=simple_df, df_new=simple_df, pk="id")
     assert rt.count_pk_old == simple_df.select(simple_df.id).distinct().count()
 
 
-def test_count_pk_new(simple_df):
-    rt = RegressionTest(df_old=simple_df, df_new=simple_df, pk="id")
+def test_count_pk_new(spark, simple_df):
+    rt = RegressionTest(spark=spark, df_old=simple_df, df_new=simple_df, pk="id")
     assert rt.count_pk_new == simple_df.select(simple_df.id).distinct().count()
 
 
-def test_df_duplicate_old(simple_df):
+def test_df_duplicate_old(spark, simple_df):
     df_old = simple_df.unionAll(simple_df)
     df_new = simple_df
-    rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
+    rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     df_duplicate = (
         df_old.select(F.col("id").alias("pk"))
         .groupBy(F.col("pk"))
@@ -161,10 +171,10 @@ def test_df_duplicate_old(simple_df):
     assert rt.df_duplicate_old.exceptAll(df_duplicate).count() == 0
 
 
-def test_df_duplicate_old_2(simple_df):
+def test_df_duplicate_old_2(spark, simple_df):
     df_old = simple_df
     df_new = simple_df.unionAll(simple_df)
-    rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
+    rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     df_duplicate = (
         df_new.select(F.col("id").alias("pk"))
         .groupBy(F.col("pk"))
@@ -174,122 +184,117 @@ def test_df_duplicate_old_2(simple_df):
     assert rt.df_duplicate_old.exceptAll(df_duplicate).count() == 0
 
 
-def test_count_duplicate_record_old(simple_df):
+def test_count_record_duplicate_old(spark, simple_df):
     df_old = simple_df.unionAll(simple_df)
     df_new = simple_df
-    rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
-    assert rt.count_duplicate_record_old == df_old.count() - df_old.select(F.col("id")).distinct().count()
+    rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
+    assert rt.count_record_duplicate_old == df_old.count() - df_old.select(F.col("id")).distinct().count()
 
 
-def test_count_duplicate_record_old_2(simple_df):
+def test_count_record_duplicate_old_2(spark, simple_df):
     df_old = simple_df
     df_new = simple_df.unionAll(simple_df)
-    rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
-    assert rt.count_duplicate_record_new == df_new.count() - df_new.select(F.col("id")).distinct().count()
+    rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
+    assert rt.count_record_duplicate_new == df_new.count() - df_new.select(F.col("id")).distinct().count()
 
 
-def test_count_duplicate_pk_old(simple_df):
+def test_count_pk_duplicate_old(spark, simple_df):
     df_old = simple_df.unionAll(simple_df)
     df_new = simple_df
-    rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
-    assert rt.count_duplicate_record_old == df_old.select(F.col("id")).distinct().count()
+    rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
+    assert rt.count_record_duplicate_old == df_old.select(F.col("id")).distinct().count()
 
 
-def test_count_duplicate_pk_old_2(simple_df):
+def test_count_pk_duplicate_old_2(spark, simple_df):
     df_old = simple_df
     df_new = simple_df.unionAll(simple_df)
-    rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
-    assert rt.count_duplicate_record_new == df_new.select(F.col("id")).distinct().count()
+    rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
+    assert rt.count_record_duplicate_new == df_new.select(F.col("id")).distinct().count()
 
 
-def test_sample_duplicate_pk_old(simple_df):
+def test_sample_pk_duplicate_old(spark, simple_df):
     df_old = simple_df.unionAll(simple_df)
     df_new = simple_df
-    rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
+    rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     df_result = df_old.select(F.col("id")).distinct().orderBy(F.col("id"))
-    assert rt.sample_duplicate_pk_old == tuple([row.id for row in df_result.collect()])
+    assert rt.sample_pk_duplicate_old == tuple([row.id for row in df_result.collect()])
 
 
-def test_sample_duplicate_pk_new(simple_df):
+def test_sample_pk_duplicate_new(spark, simple_df):
     df_old = simple_df
     df_new = simple_df.unionAll(simple_df)
-    rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
+    rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     df_result = df_new.select(F.col("id")).distinct().orderBy(F.col("id"))
-    assert rt.sample_duplicate_pk_new == tuple([row.id for row in df_result.collect()])
+    assert rt.sample_pk_duplicate_new == tuple([row.id for row in df_result.collect()])
 
 
-def test_has_symmetric_duplicates_true(simple_df):
+def test_has_symmetric_duplicates_true(spark, simple_df):
     df_old = simple_df.unionAll(simple_df)
     df_new = simple_df.unionAll(simple_df)
-    rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
+    rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     assert rt.has_symmetric_duplicates is True
 
 
-def test_has_symmetric_duplicates_false(simple_df):
+def test_has_symmetric_duplicates_false(spark, simple_df):
     df_old = simple_df.unionAll(simple_df)
     df_new = simple_df
-    rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
+    rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     assert rt.has_symmetric_duplicates is False
 
 
-def test_df_orphan_old(simple_df):
+def test_df_orphan_old(spark, simple_df):
     df_old = simple_df.unionAll(simple_df)
     df_new = simple_df
-    rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
+    rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     df_orphan = df_old.join(df_new, how="left_anti", on=["id"]).select(F.col("id")).distinct()
     assert rt.df_orphan_old.exceptAll(df_orphan).count() == 0
 
 
-def test_df_orphan_new(simple_df):
+def test_df_orphan_new(spark, simple_df):
     df_old = simple_df
     df_new = simple_df.unionAll(simple_df)
-    rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
+    rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     df_orphan = df_new.join(df_old, how="left_anti", on=["id"]).select(F.col("id")).distinct()
     assert rt.df_orphan_old.exceptAll(df_orphan).count() == 0
 
 
-def test_count_orphan_pk_old(simple_df):
+def test_count_pk_orphan_old(spark, simple_df):
     df_old = simple_df.unionAll(simple_df)
     df_new = simple_df
-    rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
+    rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     count_orphan_pk = df_old.join(df_new, how="left_anti", on=["id"]).select(F.col("id")).distinct().count()
-    assert rt.count_orphan_pk_old == count_orphan_pk
+    assert rt.count_pk_orphan_old == count_orphan_pk
 
 
-def test_count_orphan_pk_new(simple_df):
+def test_count_pk_orphan_new(spark, simple_df):
     df_old = simple_df
     df_new = simple_df.unionAll(simple_df)
-    rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
+    rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     count_orphan_pk = df_new.join(df_old, how="left_anti", on=["id"]).select(F.col("id")).distinct().count()
-    assert rt.count_orphan_pk_new == count_orphan_pk
+    assert rt.count_pk_orphan_new == count_orphan_pk
 
 
-def test_sample_orphan_pk_old(simple_df):
+def test_sample_pk_orphan_old(spark, simple_df):
     df_old = simple_df.unionAll(simple_df)
     df_new = simple_df
-    rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
+    rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     df_result = df_old.join(df_new, how="left_anti", on=["id"]).select(F.col("id")).distinct()
     sample_orphan_pk = tuple([row.id for row in df_result.collect()])
-    assert rt.sample_orphan_pk_old == sample_orphan_pk
+    assert rt.sample_pk_orphan_old == sample_orphan_pk
 
 
-def test_sample_orphan_pk_new(simple_df):
+def test_sample_pk_orphan_new(spark, simple_df):
     df_old = simple_df
     df_new = simple_df.unionAll(simple_df)
-    rt = RegressionTest(df_old=df_old, df_new=df_new, pk="id")
+    rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     df_result = df_new.join(df_old, how="left_anti", on=["id"]).select(F.col("id")).distinct()
     sample_orphan_pk = tuple([row.id for row in df_result.collect()])
-    assert rt.sample_orphan_pk_new == sample_orphan_pk
+    assert rt.sample_pk_orphan_new == sample_orphan_pk
 
 
-def test_count_comparable_record(simple_df):
-    rt = RegressionTest(df_old=simple_df, df_new=simple_df, pk="id")
-    assert rt.count_comparable_record == simple_df.count()
-
-
-def test_count_comparable_pk(simple_df):
-    rt = RegressionTest(df_old=simple_df, df_new=simple_df, pk="id")
-    assert rt.count_comparable_pk == simple_df.select(F.col("id")).distinct().count()
+def test_count_pk_comparable(spark, simple_df):
+    rt = RegressionTest(spark=spark, df_old=simple_df, df_new=simple_df, pk="id")
+    assert rt.count_pk_comparable == simple_df.select(F.col("id")).distinct().count()
 
 
 def test_diff(spark):
@@ -363,17 +368,17 @@ def test_diff(spark):
     )
 
     rt = RegressionTest(
+        spark=spark,
         df_old=df_old,
         df_new=df_new,
         pk="id",
         table_name="test_diff",
     )
 
-    assert rt.count_comparable_record == 22
-    assert rt.count_comparable_pk == 22
-    assert rt.count_diff_record == 20
-    assert rt.count_diff_pk == 20
-    assert not rt.is_success
+    assert rt.count_pk_comparable == 22
+    assert rt.count_record_diff == 20
+    assert rt.count_pk_diff == 20
+    assert not rt.success
     assert (
         tabulate(
             rt.df_diff.orderBy(F.col("pk").cast(IntegerType()), F.col("diff_category"), F.col("column_name")).toPandas(),
