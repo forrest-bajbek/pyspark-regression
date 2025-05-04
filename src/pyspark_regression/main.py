@@ -11,7 +11,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.column import Column
 from pyspark.sql.dataframe import DataFrame
-from pyspark.sql.types import LongType, StringType, StructType, StructField
+from pyspark.sql.types import LongType, StringType, BooleanType, TimestampType, FloatType, DoubleType
 
 
 logger = logging.getLogger(__name__)
@@ -313,6 +313,7 @@ class RegressionTest:
     def df_comparable(self) -> DataFrame:
         df_old_no_dups = self.df_old.join(self.df_duplicate_old, how='left_anti', on=["pk"])
         df_new_no_dups = self.df_new.join(self.df_duplicate_new, how='left_anti', on=["pk"])
+        column_to_data_type = {s.name: s.dataType.typeName() for s in self.df_old.schema}
         df_comparable = (
             df_old_no_dups.alias('o')
             .join(df_new_no_dups.alias('n'), on=(F.col('o.pk') == F.col('n.pk')))
@@ -323,10 +324,12 @@ class RegressionTest:
                         F.create_map(
                             F.lit("column_name"),
                             F.lit(c),
+                            F.lit("data_type"),
+                            F.lit(column_to_data_type[c]),
                             F.lit("old_value"),
-                            F.col(f"o.{c}"),
+                            F.col(f"o.{c}").cast(StringType()),
                             F.lit("new_value"),
-                            F.col(f"n.{c}"),
+                            F.col(f"n.{c}").cast(StringType()),
                         ) for c in self.columns_comparable
                     ]
                 ).alias("column_map"),
@@ -388,115 +391,91 @@ class RegressionTest:
         return set([row.diff_cols for row in self.df_diff_cols.collect()])
 
     @staticmethod
-    def __categorize_diff(x: Column, y: Column, *, data_type: str) -> Column:
+    def __quote_if_string(col: Column, data_type: Column) -> Column:
+        return F.when(data_type == F.lit("string"), F.concat(F.lit("'"), col, F.lit("'"))).otherwise(col)
+
+    @staticmethod
+    def __diff_category(x: Column, y: Column, data_type: Column) -> Column:
         """
         Categorizes the difference between two columns.
         """
         col_default = F.lit('uncategorized')
-
-        if data_type == 'string':
-            col_diff_category = (
-                F.when((F.trim(y) == x) & (F.ltrim(y) != x) & (F.rtrim(y) != x), F.lit('padding added (left and right)'))
-                 .when((F.trim(x) == y) & (F.ltrim(x) != y) & (F.rtrim(x) != y), F.lit('padding removed (left and right)'))
-                 .when(F.ltrim(y) == x, F.lit('padding added (left)'))
-                 .when(F.rtrim(y) == x, F.lit('padding added (right)'))
-                 .when(F.ltrim(x) == y, F.lit('padding removed (left)'))
-                 .when(F.rtrim(x) == y, F.lit('padding removed (right)'))
-                 .when(F.upper(x) == y, F.lit('capitalization added'))
-                 .when(F.lower(y) == x, F.lit('capitalization added'))
-                 .when(F.upper(y) == x, F.lit('capitalization removed'))
-                 .when(F.lower(x) == y, F.lit('capitalization removed'))
-                 .when(F.upper(x) == F.upper(y), F.lit('capitalization changed'))
-                 .when(x.startswith(y), F.lit('truncation added'))
-                 .when(y.startswith(x), F.lit('truncation removed'))
-                 .otherwise(col_default)
-            )
-        elif data_type in ['float', 'double', 'decimal']:
-            col_diff_category = (
-                F.when(F.round(x, 2) == F.round(y, 2), F.lit('rounding'))
-                 .when(x % y == F.lit(0), F.lit('multiple'))
-                 .when(y % x == F.lit(0), F.lit('multiple'))
-                 .otherwise(col_default)
-            )
-        elif data_type == 'timestamp':
-            col_diff_category = (
-                F.when(F.abs(x.cast(LongType()) - y.cast(LongType())) % 3600 == 0, F.lit('hour shift'))
-                 .when(F.date_trunc('millisecond', x) == F.date_trunc('millisecond', y), F.lit('millisecond truncation'))
-                 .when(F.date_trunc('second', x) == y, F.lit('time removed'))
-                 .when(F.date_trunc('second', y) == x, F.lit('time added'))
-                 .otherwise(col_default)
-            )
-        elif data_type == 'boolean':
-            col_diff_category = (
-                F.when(x & ~y, "boolean flip (true -> false)")
-                 .when(y & ~x, "boolean flip (false -> true)")
-                 .otherwise(col_default)
-            )
-        else:
-            col_diff_category = col_default
-
         return (
             F.when(x.isNull() & y.isNotNull(), F.lit('null flip (null -> not null)'))
-             .when(x.isNotNull() & y.isNull(), F.lit('null flip (not null -> null)'))
-             .when((x == F.lit('None')) & y.isNull(), F.lit("'None' flip ('None' -> null)"))
-             .when(x.isNull() & (y == F.lit('None')), F.lit("'None' flip (null -> 'None')"))
-             .when((x == F.lit('None')) & y.isNotNull(), F.lit("'None' flip ('None' -> not null)"))
-             .when(x.isNotNull() & (y == F.lit('None')), F.lit("'None' flip (not null -> 'None')"))
-             .otherwise(col_diff_category)
-        )
-
-    @staticmethod
-    def __quote_if_string(col: Column, data_type: Column) -> Column:
-        return F.when(data_type == F.lit("string"), F.concat(F.lit("'"), col, F.lit("'"))).otherwise(col)
-
-    @cached_property
-    def __df_column_info(self) -> DataFrame:
-        return self.spark.createOrReplaceDataFrame(
-            data=[
-                (s.name, s.dataType.typeName())
-                for s in self.df_old.schema
-            ],
-            schema=StructType(
-                [
-                    StructField("column_name", StringType()),
-                    StructField("data_type", StringType()),
-                ]
-            ),
+            .when(x.isNotNull() & y.isNull(), F.lit('null flip (not null -> null)'))
+            .when((x == F.lit('None')) & y.isNull(), F.lit("'None' flip ('None' -> null)"))
+            .when(x.isNull() & (y == F.lit('None')), F.lit("'None' flip (null -> 'None')"))
+            .when((x == F.lit('None')) & y.isNotNull(), F.lit("'None' flip ('None' -> not null)"))
+            .when(x.isNotNull() & (y == F.lit('None')), F.lit("'None' flip (not null -> 'None')"))
+            .otherwise(
+                F.when(
+                    data_type == F.lit('string'),
+                    F.when((F.trim(y) == x) & (F.ltrim(y) != x) & (F.rtrim(y) != x), F.lit('padding added (left and right)'))
+                    .when((F.trim(x) == y) & (F.ltrim(x) != y) & (F.rtrim(x) != y), F.lit('padding removed (left and right)'))
+                    .when(F.ltrim(y) == x, F.lit('padding added (left)'))
+                    .when(F.rtrim(y) == x, F.lit('padding added (right)'))
+                    .when(F.ltrim(x) == y, F.lit('padding removed (left)'))
+                    .when(F.rtrim(x) == y, F.lit('padding removed (right)'))
+                    .when(F.upper(x) == y, F.lit('capitalization added'))
+                    .when(F.lower(y) == x, F.lit('capitalization added'))
+                    .when(F.upper(y) == x, F.lit('capitalization removed'))
+                    .when(F.lower(x) == y, F.lit('capitalization removed'))
+                    .when(F.upper(x) == F.upper(y), F.lit('capitalization changed'))
+                    .when(x.startswith(y), F.lit('truncation added'))
+                    .when(y.startswith(x), F.lit('truncation removed'))
+                    .otherwise(col_default)
+                )
+                .when(
+                    data_type == F.lit('float'),
+                    F.when(F.round(x.cast(FloatType()), 2) == F.round(y.cast(FloatType()), 2), F.lit('rounding'))
+                    .when(x.cast(FloatType()) % y.cast(FloatType()) == F.lit(0), F.lit('multiple'))
+                    .when(y.cast(FloatType()) % x.cast(FloatType()) == F.lit(0), F.lit('multiple'))
+                    .otherwise(col_default)
+                )
+                .when(
+                    # Because I cant know the precision, use double for decimal
+                    data_type.isin('double', 'decimal'),
+                    F.when(F.round(x.cast(DoubleType()), 2) == F.round(y.cast(DoubleType()), 2), F.lit('rounding'))
+                    .when(x.cast(DoubleType()) % y.cast(DoubleType()) == F.lit(0), F.lit('multiple'))
+                    .when(y.cast(DoubleType()) % x.cast(DoubleType()) == F.lit(0), F.lit('multiple'))
+                    .otherwise(col_default)
+                )
+                .when(
+                    data_type == F.lit('timestamp'),
+                    F.when(F.abs(x.cast(TimestampType()).cast(LongType()) - y.cast(TimestampType()).cast(LongType())) % 3600 == 0, F.lit('hour shift'))
+                    .when(F.date_trunc('millisecond', x.cast(TimestampType())) == F.date_trunc('millisecond', y.cast(TimestampType())), F.lit('millisecond truncation'))
+                    .when(F.date_trunc('second', x.cast(TimestampType())) == y.cast(TimestampType()), F.lit('time removed'))
+                    .when(F.date_trunc('second', y.cast(TimestampType())) == x.cast(TimestampType()), F.lit('time added'))
+                    .otherwise(col_default)
+                )
+                .when(
+                    data_type == F.lit('boolean'),
+                    F.when(x.cast(BooleanType()) & ~y.cast(BooleanType()), "boolean flip (true -> false)")
+                    .when(y.cast(BooleanType()) & ~x.cast(BooleanType()), "boolean flip (false -> true)")
+                    .otherwise(col_default)
+                )
+                .otherwise(col_default)
+            )
         )
 
     @cached_property
     def df_diff(self):
-
-        df_regression_melted = (
+        return (
             self.df_regression
             .select(
                 F.col("pk"),
                 F.explode(F.col("diffs")).alias("diff"),
             )
-        )
-
-        df_diff = (
-            df_regression_melted.alias("r")
-            .join(
-                self.__df_column_info.alias("t"),
-                on=F.col("r.column_name") == F.col("t.column_name"),
-            )
             .select(
-                F.col("r.diff.column_name"),
-                F.col("t.data_type"),
-                F.col("r.pk"),
-                self.__quote_if_string(
-                    col=F.col("r.diff.old_value"),
-                    data_type=F.col("t.data_type")
-                ).cast(StringType()).alias("old_value"),
-                self.__quote_if_string(
-                    col=F.col("r.diff.new_value"),
-                    data_type=F.col("t.data_type")
-                ).cast(StringType()).alias("new_value"),
-                self.__categorize_diff(
-                    F.col("r.diff.old_value"),
-                    F.col("r.diff.new_value"),
-                    data_type=F.col("t.data_type"),
+                F.col("diff.column_name").alias("column_name"),
+                F.col("diff.data_type").alias("data_type"),
+                F.col("pk"),
+                self.__quote_if_string(F.col("diff.old_value"), F.col("diff.data_type")).alias("old_value"),
+                self.__quote_if_string(F.col("diff.new_value"), F.col("diff.data_type")).alias("new_value"),
+                self.__diff_category(
+                    F.col("diff.old_value"),
+                    F.col("diff.new_value"),
+                    F.col("diff.data_type"),
                 ).alias("diff_category"),
             )
         )
