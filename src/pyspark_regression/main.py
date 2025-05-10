@@ -35,6 +35,8 @@ class RegressionTest:
         pk (str | Column): Primary Key shared between df_old and df_new. Can be either a string or a Spark Column.
         table_name (str = 'df'): Name of table
         num_samples (int = 5): Number of records to pull when retrieving samples.
+        use_cache (bool = False): If True, will ignore checkpointing and use caching on dataframes.
+        checkpoint_dir (Optional[str] = None): If set, Spark will checkpoint dataframes for optimization. Ignored if use_cache=True
     Returns:
         RegressionTest
     """
@@ -60,9 +62,9 @@ class RegressionTest:
         self.num_samples: int = num_samples
         "Number of records to pull when retrieving samples."
         self.use_cache = use_cache
-        "If True, will ignore checkpointing and use caching on dataframes."
+        "If True, will use caching on dataframes and ignore checkpointing."
         self.checkpoint_dir = checkpoint_dir
-        "If True, Spark will checkpoint dataframes for optimization. Ignored if use_cache=True"
+        "If set, Spark will checkpoint dataframes for optimization. Ignored if use_cache=True."
 
         # Ensure 'pk' and 'diff_cols' are not columns in the old or new dataframes.
         for c in ["pk", "diff_cols"]:
@@ -84,15 +86,33 @@ class RegressionTest:
 
         # Handle caching
         self.df_duplicate_old = self._df_duplicate_old
+        "DataFrame of duplicate pks in old table, with count of duplicates"
         self.df_duplicate_new = self._df_duplicate_new
+        "DataFrame of duplicate pks in new table, with count of duplicates"
         self.df_orphan_old = self._df_orphan_old
+        "DataFrame of orphan pks in old table"
         self.df_orphan_new = self._df_orphan_new
+        "DataFrame of orphan pks in new table"
         self.df_comparable = self._df_comparable
+        """
+        DataFrame of rows that are eligible for regression testing.
+
+        Rows are eligible if they:
+
+        1. Are not duplicates
+        2. Are not orphans
+        3. Have matching primary keys between `df_old` and `df_new`
+        """
         self.df_regression = self._df_regression
+        "Same as df_comparable, but with column_map filtered for actual differences and renamed to diffs."
         self.df_diff = self._df_diff
+        "DataFrame that pivots and filters `df_regression` to show one row per column containing values that are different"
         self.df_diff_cols = self._df_diff_cols
+        "DataFrame of column names that contain diffs."
         self.df_diff_summary = self._df_diff_summary
+        "A summary of df_diff, aggregating a count of records/pks"
         self.df_diff_sample = self._df_diff_sample
+        "Same as df_diff, but limited to num_sample rows per column per diff category"
 
         if self.use_cache:
             self.df_duplicate_old.cache()
@@ -194,8 +214,10 @@ class RegressionTest:
     @cached_property
     def columns_comparable(self) -> Set[str]:
         """
-        Columns that can be compared for regression test. Comparable columns (1) must be
-        present in df_old and df_new, and (2) have the same data_type in df_old and df_new
+        Columns that can be compared for regression test. Comparable columns must
+
+        1. be present in df_old and df_new
+        2. have the same data_type in df_old and df_new
         """
         return self.columns_kept.difference(self.columns_changed_type)
 
@@ -225,7 +247,6 @@ class RegressionTest:
     # -------------------------------------------------------------------------
     @property
     def _df_duplicate_old(self) -> DataFrame:
-        "DataFrame of duplicate pks in old table, with count of duplicates"
         return (
             self.df_old.select(F.col("pk"))
             .groupBy(F.col("pk"))
@@ -235,7 +256,6 @@ class RegressionTest:
 
     @property
     def _df_duplicate_new(self) -> DataFrame:
-        "DataFrame of duplicate pks in new table, with count of duplicates"
         return (
             self.df_new.select(F.col("pk"))
             .groupBy(F.col("pk"))
@@ -306,12 +326,10 @@ class RegressionTest:
     # -------------------------------------------------------------------------
     @property
     def _df_orphan_old(self) -> DataFrame:
-        "DataFrame of orphan pks in old table"
         return self.df_old.join(self.df_new, how="left_anti", on=["pk"]).select(F.col("pk")).distinct()
 
     @property
     def _df_orphan_new(self) -> DataFrame:
-        "DataFrame of orphan pks in new table"
         return self.df_new.join(self.df_old, how="left_anti", on=["pk"]).select(F.col("pk")).distinct()
 
     @cached_property
@@ -338,14 +356,6 @@ class RegressionTest:
     # -------------------------------------------------------------------------
     @property
     def _df_comparable(self) -> DataFrame:
-        """
-        DataFrame of rows that are eligible for regression testing.
-
-        Rows are eligible if they:
-        1. Are not duplicates
-        2. Are not orphans
-        3. Have matching primary keys between `df_old` and `df_new`
-        """
         df_old_no_dups = self.df_old.join(self.df_duplicate_old, how="left_anti", on=["pk"])
         df_new_no_dups = self.df_new.join(self.df_duplicate_new, how="left_anti", on=["pk"])
         column_to_data_type = {s.name: s.dataType.typeName() for s in self.df_old.schema}
@@ -384,9 +394,6 @@ class RegressionTest:
 
     @property
     def _df_regression(self):
-        """
-        Same as df_comparable, but with column_map filtered for actual differences and renamed to diffs.
-        """
         return self.df_comparable.select(
             F.col("pk"),
             F.expr(
@@ -415,7 +422,6 @@ class RegressionTest:
 
     @property
     def _df_diff_cols(self) -> DataFrame:
-        "DataFrame of column names that contain diffs."
         return (
             self.df_regression.select(F.explode(F.col("diffs")).alias("diff"))
             .select(F.col("diff.column_name").alias("diff_cols"))
@@ -501,7 +507,6 @@ class RegressionTest:
 
     @property
     def _df_diff(self):
-        "DataFrame that pivots and filters `df_regression` to show one row per column containing values that are different"
         return self.df_regression.select(
             F.col("pk"),
             F.explode(F.col("diffs")).alias("diff"),
@@ -520,7 +525,6 @@ class RegressionTest:
 
     @property
     def _df_diff_summary(self) -> DataFrame:
-        "A summary of df_diff, aggregating a count of records/pks"
         return (
             self.df_diff.groupBy(F.col("column_name"), F.col("data_type"), F.col("diff_category"))
             .agg(F.count("pk").alias("count_record"), F.countDistinct("pk").alias("count_pk"))
@@ -531,7 +535,6 @@ class RegressionTest:
     # For each column_name and diff_category, provide samples
     @property
     def _df_diff_sample(self) -> DataFrame:
-        "Same as df_diff, but limited to num_sample rows per column per diff category"
         return (
             self.df_diff.withColumn("rn", F.row_number().over(Window.partitionBy([F.col("column_name"), F.col("diff_category")]).orderBy(F.col("pk"))))
             .filter(F.col("rn") <= F.lit(self.num_samples))
@@ -547,6 +550,7 @@ class RegressionTest:
         Whether the table passed regression test.
 
         Regression Tests fail when:
+
         - Columns are added
         - Columns are removed
         - Columns change data_type
