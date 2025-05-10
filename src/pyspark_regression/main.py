@@ -311,6 +311,14 @@ class RegressionTest:
     # -------------------------------------------------------------------------
     @cached_property
     def df_comparable(self) -> DataFrame:
+        """
+        DataFrame of rows that are eligible for regression testing.
+
+        Rows are eligible if they:
+        1. Are not duplicates
+        2. Are not orphans
+        3. Have matching primary keys between `df_old` and `df_new`
+        """
         df_old_no_dups = self.df_old.join(self.df_duplicate_old, how="left_anti", on=["pk"])
         df_new_no_dups = self.df_new.join(self.df_duplicate_new, how="left_anti", on=["pk"])
         column_to_data_type = {s.name: s.dataType.typeName() for s in self.df_old.schema}
@@ -346,6 +354,9 @@ class RegressionTest:
 
     @cached_property
     def df_regression(self):
+        """
+        Same as df_comparable, but with column_map filtered for actual differences and renamed to diffs.
+        """
         df_regression = self.df_comparable.select(
             F.col("pk"),
             F.expr(
@@ -375,6 +386,7 @@ class RegressionTest:
 
     @cached_property
     def df_diff_cols(self) -> DataFrame:
+        "DataFrame of column names that contain diffs."
         return (
             self.df_regression.select(F.explode(F.col("diffs")).alias("diff"))
             .select(F.col("diff.column_name").alias("diff_cols"))
@@ -460,6 +472,7 @@ class RegressionTest:
 
     @cached_property
     def df_diff(self):
+        "DataFrame that pivots and filters `df_regression` to show one row per column containing values that are different"
         return self.df_regression.select(
             F.col("pk"),
             F.explode(F.col("diffs")).alias("diff"),
