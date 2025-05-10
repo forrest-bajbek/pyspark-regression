@@ -164,8 +164,6 @@ class RegressionTest:
         """
         return self.columns_kept.difference(self.columns_changed_type)
 
-    # -------------------------------------------------------------------------
-
     # Base Table Info
     # -------------------------------------------------------------------------
     @cached_property
@@ -187,8 +185,6 @@ class RegressionTest:
     def count_pk_new(self) -> int:
         "Count of pks in df_new"
         return self.df_new.select(F.col("pk")).distinct().count()
-
-    # -------------------------------------------------------------------------
 
     # Duplicate Analysis
     # -------------------------------------------------------------------------
@@ -271,8 +267,6 @@ class RegressionTest:
         __df_dup_new_comp = self.df_new.join(self.df_duplicate_new, how="left_semi", on=["pk"]).select(list(self.columns_comparable))
         return (__df_dup_old_comp.exceptAll(__df_dup_new_comp)).unionAll(__df_dup_new_comp.exceptAll(__df_dup_old_comp)).count() == 0
 
-    # -------------------------------------------------------------------------
-
     # Orphan Analysis
     # -------------------------------------------------------------------------
     @cached_property
@@ -304,8 +298,6 @@ class RegressionTest:
     def sample_pk_orphan_new(self) -> tuple:
         "num_sample samples of pks that are in df_new but not df_old"
         return tuple([row.pk for row in self.df_orphan_new.select(F.col("pk")).orderBy(F.col("pk")).limit(self.num_samples).collect()])
-
-    # -------------------------------------------------------------------------
 
     # Diff Analysis
     # -------------------------------------------------------------------------
@@ -510,8 +502,6 @@ class RegressionTest:
             .orderBy(F.col("column_name"), F.col("diff_category"), F.col("pk"))
         )
 
-    # -------------------------------------------------------------------------
-
     # Regression Test Results
     # -------------------------------------------------------------------------
     @cached_property
@@ -541,8 +531,6 @@ class RegressionTest:
             return False
         else:
             return True
-
-    # -------------------------------------------------------------------------
 
     # Summary
     # -------------------------------------------------------------------------
