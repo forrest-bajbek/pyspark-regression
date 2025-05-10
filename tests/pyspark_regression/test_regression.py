@@ -3,17 +3,7 @@ from datetime import date, datetime
 import pyspark.sql.functions as F
 import pytest
 from pyspark.sql import SparkSession
-from pyspark.sql.types import (
-    BooleanType,
-    DateType,
-    DoubleType,
-    FloatType,
-    IntegerType,
-    StringType,
-    StructField,
-    StructType,
-    TimestampType,
-)
+from pyspark.sql.types import BooleanType, DateType, DoubleType, FloatType, IntegerType, StringType, StructField, StructType, TimestampType
 from tabulate import tabulate  # type: ignore [import-untyped]
 
 from pyspark_regression import RegressionTest, SchemaMutation

@@ -25,6 +25,7 @@ license = {file = "LICENSE"}
 version = "4.0.0"
 requires-python = ">=3.10"
 dependencies = [
+    "pandas",
     "pyspark>=3,<4",
     "tabulate",
 ]
