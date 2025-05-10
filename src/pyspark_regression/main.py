@@ -1,10 +1,9 @@
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import timedelta
 from functools import cached_property
 from time import perf_counter
 from typing import List, Set
-from uuid import UUID, uuid4
 
 from pyspark.sql import SparkSession, Window, functions as F
 from pyspark.sql.column import Column
@@ -53,10 +52,6 @@ class RegressionTest:
     "Name of table"
     num_samples: int = 5
     "Number of records to pull when retrieving samples."
-    run_id: UUID = uuid4()
-    "A unique id for the Regression Test"
-    run_time: datetime = datetime.now()
-    "Time at which the Regression Test was initialized"
 
     def __post_init__(self):
 
@@ -546,11 +541,6 @@ class RegressionTest:
             report.append(f"# {self.table_name}: SUCCESS")
         else:
             report.append(f"# {self.table_name}: FAILURE")
-
-        report += [
-            f"- run_id: {self.run_id}",
-            f"- run_time: {str(self.run_time)}",
-        ]
 
         if not self.success:
             report += [
