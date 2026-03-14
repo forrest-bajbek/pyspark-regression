@@ -5,5 +5,5 @@
 
 `pyspark-regression` is available on PyPI via `pip`:
 ```bash
-pip install pyspark-regression==3.5.5
+pip install pyspark-regression
 ```
