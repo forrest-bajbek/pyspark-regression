@@ -149,7 +149,7 @@ def test_count_pk_new(spark, simple_df):
 
 
 def test_df_duplicate_old(spark, simple_df):
-    df_old = simple_df.unionAll(simple_df)
+    df_old = simple_df.union(simple_df)
     df_new = simple_df
     rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     df_duplicate = (
@@ -163,7 +163,7 @@ def test_df_duplicate_old(spark, simple_df):
 
 def test_df_duplicate_old_2(spark, simple_df):
     df_old = simple_df
-    df_new = simple_df.unionAll(simple_df)
+    df_new = simple_df.union(simple_df)
     rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     df_duplicate = (
         df_new.select(F.col("id").alias("pk"))
@@ -175,7 +175,7 @@ def test_df_duplicate_old_2(spark, simple_df):
 
 
 def test_count_record_duplicate_old(spark, simple_df):
-    df_old = simple_df.unionAll(simple_df)
+    df_old = simple_df.union(simple_df)
     df_new = simple_df
     rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     assert rt.count_record_duplicate_old == df_old.count() - df_old.select(F.col("id")).distinct().count()
@@ -183,13 +183,13 @@ def test_count_record_duplicate_old(spark, simple_df):
 
 def test_count_record_duplicate_old_2(spark, simple_df):
     df_old = simple_df
-    df_new = simple_df.unionAll(simple_df)
+    df_new = simple_df.union(simple_df)
     rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     assert rt.count_record_duplicate_new == df_new.count() - df_new.select(F.col("id")).distinct().count()
 
 
 def test_count_pk_duplicate_old(spark, simple_df):
-    df_old = simple_df.unionAll(simple_df)
+    df_old = simple_df.union(simple_df)
     df_new = simple_df
     rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     assert rt.count_record_duplicate_old == df_old.select(F.col("id")).distinct().count()
@@ -197,13 +197,13 @@ def test_count_pk_duplicate_old(spark, simple_df):
 
 def test_count_pk_duplicate_old_2(spark, simple_df):
     df_old = simple_df
-    df_new = simple_df.unionAll(simple_df)
+    df_new = simple_df.union(simple_df)
     rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     assert rt.count_record_duplicate_new == df_new.select(F.col("id")).distinct().count()
 
 
 def test_sample_pk_duplicate_old(spark, simple_df):
-    df_old = simple_df.unionAll(simple_df)
+    df_old = simple_df.union(simple_df)
     df_new = simple_df
     rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     df_result = df_old.select(F.col("id")).distinct().orderBy(F.col("id"))
@@ -212,28 +212,28 @@ def test_sample_pk_duplicate_old(spark, simple_df):
 
 def test_sample_pk_duplicate_new(spark, simple_df):
     df_old = simple_df
-    df_new = simple_df.unionAll(simple_df)
+    df_new = simple_df.union(simple_df)
     rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     df_result = df_new.select(F.col("id")).distinct().orderBy(F.col("id"))
     assert rt.sample_pk_duplicate_new == tuple([row.id for row in df_result.collect()])
 
 
 def test_has_symmetric_duplicates_true(spark, simple_df):
-    df_old = simple_df.unionAll(simple_df)
-    df_new = simple_df.unionAll(simple_df)
+    df_old = simple_df.union(simple_df)
+    df_new = simple_df.union(simple_df)
     rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     assert rt.has_symmetric_duplicates is True
 
 
 def test_has_symmetric_duplicates_false(spark, simple_df):
-    df_old = simple_df.unionAll(simple_df)
+    df_old = simple_df.union(simple_df)
     df_new = simple_df
     rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     assert rt.has_symmetric_duplicates is False
 
 
 def test_df_orphan_old(spark, simple_df):
-    df_old = simple_df.unionAll(simple_df)
+    df_old = simple_df.union(simple_df)
     df_new = simple_df
     rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     df_orphan = df_old.join(df_new, how="left_anti", on=["id"]).select(F.col("id")).distinct()
@@ -242,14 +242,14 @@ def test_df_orphan_old(spark, simple_df):
 
 def test_df_orphan_new(spark, simple_df):
     df_old = simple_df
-    df_new = simple_df.unionAll(simple_df)
+    df_new = simple_df.union(simple_df)
     rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     df_orphan = df_new.join(df_old, how="left_anti", on=["id"]).select(F.col("id")).distinct()
     assert rt.df_orphan_old.exceptAll(df_orphan).count() == 0
 
 
 def test_count_pk_orphan_old(spark, simple_df):
-    df_old = simple_df.unionAll(simple_df)
+    df_old = simple_df.union(simple_df)
     df_new = simple_df
     rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     count_orphan_pk = df_old.join(df_new, how="left_anti", on=["id"]).select(F.col("id")).distinct().count()
@@ -258,14 +258,14 @@ def test_count_pk_orphan_old(spark, simple_df):
 
 def test_count_pk_orphan_new(spark, simple_df):
     df_old = simple_df
-    df_new = simple_df.unionAll(simple_df)
+    df_new = simple_df.union(simple_df)
     rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     count_orphan_pk = df_new.join(df_old, how="left_anti", on=["id"]).select(F.col("id")).distinct().count()
     assert rt.count_pk_orphan_new == count_orphan_pk
 
 
 def test_sample_pk_orphan_old(spark, simple_df):
-    df_old = simple_df.unionAll(simple_df)
+    df_old = simple_df.union(simple_df)
     df_new = simple_df
     rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     df_result = df_old.join(df_new, how="left_anti", on=["id"]).select(F.col("id")).distinct()
@@ -275,7 +275,7 @@ def test_sample_pk_orphan_old(spark, simple_df):
 
 def test_sample_pk_orphan_new(spark, simple_df):
     df_old = simple_df
-    df_new = simple_df.unionAll(simple_df)
+    df_new = simple_df.union(simple_df)
     rt = RegressionTest(spark=spark, df_old=df_old, df_new=df_new, pk="id")
     df_result = df_new.join(df_old, how="left_anti", on=["id"]).select(F.col("id")).distinct()
     sample_orphan_pk = tuple([row.id for row in df_result.collect()])

@@ -26,7 +26,7 @@ version = "4.1.0"
 requires-python = ">=3.10"
 dependencies = [
     "pandas",
-    "pyspark>=3,<4",
+    "pyspark>=3,<5",
     "tabulate",
 ]
 

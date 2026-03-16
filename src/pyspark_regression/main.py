@@ -320,7 +320,7 @@ class RegressionTest:
             return False
         __df_dup_old_comp = self.df_old.join(self.df_duplicate_old, how="left_semi", on=["pk"]).select(list(self.columns_comparable))
         __df_dup_new_comp = self.df_new.join(self.df_duplicate_new, how="left_semi", on=["pk"]).select(list(self.columns_comparable))
-        return (__df_dup_old_comp.exceptAll(__df_dup_new_comp)).unionAll(__df_dup_new_comp.exceptAll(__df_dup_old_comp)).count() == 0
+        return (__df_dup_old_comp.exceptAll(__df_dup_new_comp)).union(__df_dup_new_comp.exceptAll(__df_dup_old_comp)).count() == 0
 
     # Orphan Analysis
     # -------------------------------------------------------------------------
